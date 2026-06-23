@@ -11,7 +11,7 @@ app.use(express.json());
 
 let WA_PHONE = process.env.WA_PHONE || '1199473816581188';
 let WA_WABA  = process.env.WA_WABA  || '1495630418445197';
-let WA_TOKEN = process.env.WA_TOKEN || 'EAAOI3ZBZCZA6mQBR6v4xWn82kPwu8ObryiaJ89JawahO7yNVatilvsYZBKyyZBlCvS813RuuhBHP0yDZCKA3ZC9GfpebBKhdjGjgKzaM9tKhDnVKG24ZAInLmXIEvPP9Ao1Cszfz2DF2Lx6P4N2eNls9Aed3i9ZCE4KFzTbCtP7ZCioRN0pAf2zMX3EcEqopQulSGWBwZDZD';
+let WA_TOKEN = process.env.WA_TOKEN || 'EAAOI3ZBZCZA6mQBRzLSnqGdf8ZC2b8Pp3JLZA8l1StNAdbwPiR0ZBnuEWyidEeZAFPcXsOO2S6w99vltVbjR0qZAkRq0Xgmsh27kupVRMZAyGXdXSjhwIsOzQ8HDAgSoiyPwb0bojsCUgNkMyegmg1I8Ve4ZC6nqa1nmozaFYJzBIH7sx5fREZAy4eg3SbzRZBxXLSTUVwZDZD';
 
 app.get('/', (req, res) => res.json({ status: 'ok', phone: WA_PHONE }));
 
