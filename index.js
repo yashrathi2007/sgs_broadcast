@@ -83,3 +83,42 @@ app.post('/update-token', (req, res) => {
 });
 
 app.listen(process.env.PORT || 3000, () => console.log('SGS API running on port ' + (process.env.PORT || 3000)));
+
+// Proxy Supabase requests to avoid CORS issues when running from file://
+app.get('/contacts', async (req, res) => {
+  const SB_URL = 'https://oapgtrotlfgrjefanyss.supabase.co';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hcGd0cm90bGZncmplZmFueXNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMzk5NzIsImV4cCI6MjA5NjkxNTk3Mn0.thvxozgAtmhHjUGIufdqf1naYB8mOR-0sY09eGTyOTk';
+  const headers = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Range-Unit': 'items', Prefer: 'count=none' };
+
+  try {
+    // Fetch all master rows paginated
+    let master = [], from = 0;
+    while (true) {
+      const r = await fetch(`${SB_URL}/rest/v1/retailer_master?select=retailer,wholesaler,mobile,w_mobile,conference&order=wholesaler.asc,retailer.asc`, {
+        headers: { ...headers, Range: `${from}-${from+999}` }
+      });
+      const b = await r.json();
+      master = master.concat(b);
+      if (b.length < 1000) break;
+      from += 1000;
+    }
+
+    // Fetch form submissions
+    let forms = [], from2 = 0;
+    while (true) {
+      const r = await fetch(`${SB_URL}/rest/v1/retailer_forms?select=firm_name,wholesaler_firm,mobile&order=wholesaler_firm.asc`, {
+        headers: { ...headers, Range: `${from2}-${from2+999}` }
+      });
+      const b = await r.json();
+      forms = forms.concat(b);
+      if (b.length < 1000) break;
+      from2 += 1000;
+    }
+
+    console.log(`Contacts: ${master.length} master, ${forms.length} forms`);
+    res.json({ master, forms });
+  } catch(e) {
+    console.error('Contacts error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
