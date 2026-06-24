@@ -9,7 +9,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 
 app.use(cors());
 app.use(express.json());
 
-let WA_PHONE = process.env.WA_PHONE || '1199473816581188';
+let WA_PHONE = process.env.WA_PHONE || '1234328466421792';
 let WA_WABA  = process.env.WA_WABA  || '1495630418445197';
 let WA_TOKEN = process.env.WA_TOKEN || 'EAAOI3ZBZCZA6mQBRzLSnqGdf8ZC2b8Pp3JLZA8l1StNAdbwPiR0ZBnuEWyidEeZAFPcXsOO2S6w99vltVbjR0qZAkRq0Xgmsh27kupVRMZAyGXdXSjhwIsOzQ8HDAgSoiyPwb0bojsCUgNkMyegmg1I8Ve4ZC6nqa1nmozaFYJzBIH7sx5fREZAy4eg3SbzRZBxXLSTUVwZDZD';
 const VERIFY_TOKEN = 'sgs_webhook_2026';
@@ -179,6 +179,50 @@ app.get('/contacts', async (req, res) => {
       from2 += 1000;
     }
     res.json({ master, forms });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
+// ── Check if phone has pending video reply ────────────────────────────────────
+app.post('/check-video-reply', (req, res) => {
+  const phone = (req.body.phone || '').replace(/[^0-9]/g, '');
+  const entry = pendingVideoReplies[phone];
+  if (entry && !entry.sent) {
+    res.json({ mediaId: entry.mediaId, templateName: entry.templateName });
+  } else {
+    res.json({ mediaId: null });
+  }
+});
+
+// ── Send video reply (called by TESINI chatbot after checking) ────────────────
+app.post('/send-video-reply', async (req, res) => {
+  const phone   = (req.body.phone || '').replace(/[^0-9]/g, '');
+  const mediaId = req.body.mediaId;
+  if (!phone || !mediaId) return res.status(400).json({ error: 'phone and mediaId required' });
+
+  try {
+    const payload = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: phone,
+      type: 'video',
+      video: { id: mediaId, caption: '🎊 With warm regards, SGS Pariwar' }
+    };
+    const r = await fetch(`https://graph.facebook.com/v20.0/${WA_PHONE}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    if (r.ok) {
+      if (pendingVideoReplies[phone]) pendingVideoReplies[phone].sent = true;
+      console.log(`Auto video sent to ${phone}`);
+      res.json({ success: true, messageId: data.messages?.[0]?.id });
+    } else {
+      res.status(r.status).json({ error: data.error?.message });
+    }
   } catch(e) {
     res.status(500).json({ error: e.message });
   }
