@@ -18,6 +18,1119 @@ const VERIFY_TOKEN = 'sgs_webhook_2026';
 // { phone: { mediaId, templateName, sent: false } }
 const pendingVideoReplies = {};
 
+
+// ── Serve broadcast page ──────────────────────────────────────────────────────
+app.get('/broadcast', (req, res) => {
+  res.setHeader('Content-Type', 'text/html');
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGS – WhatsApp Broadcast</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--green:#25D366;--gdark:#128C7E;--navy:#1A2B4A;--red:#C0272D;--border:#D0D5DD;--text:#1C1C1E;--muted:#6B7280;--light:#F7F8FA;--radius:8px}
+  body{font-family:'Inter',sans-serif;background:#EAEEF3;min-height:100vh;color:var(--text)}
+  /* Login */
+  .login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+  .login-card{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.12);overflow:hidden;width:100%;max-width:360px}
+  .login-hdr{background:var(--gdark);padding:28px;text-align:center}
+  .login-hdr .ico{font-size:40px;margin-bottom:8px}
+  .login-hdr h2{color:#fff;font-size:20px;font-weight:700}
+  .login-hdr p{color:rgba(255,255,255,.7);font-size:12px;margin-top:4px}
+  .login-accent{height:4px;background:linear-gradient(90deg,var(--green),var(--gdark))}
+  .login-body{padding:28px;display:flex;flex-direction:column;gap:14px}
+  .login-body label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px}
+  .login-body input{width:100%;border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 13px;font-size:14px;font-family:inherit;outline:none}
+  .login-body input:focus{border-color:var(--green)}
+  .login-btn{width:100%;padding:12px;background:var(--green);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer}
+  .login-btn:hover{background:var(--gdark)}
+  .login-err{font-size:12px;color:var(--red);text-align:center;display:none}
+  /* App */
+  .app{display:none;flex-direction:column;min-height:100vh}
+  .topbar{background:var(--gdark);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .topbar-title{color:#fff;font-size:16px;font-weight:700}
+  .topbar-sub{color:rgba(255,255,255,.6);font-size:11px}
+  .accent-bar{height:3px;background:linear-gradient(90deg,var(--green),var(--gdark))}
+  .btn-logout{background:transparent;color:rgba(255,255,255,.7);border:1.5px solid rgba(255,255,255,.3);padding:7px 14px;border-radius:var(--radius);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .btn-logout:hover{color:#fff;border-color:#fff}
+  .main{padding:24px;flex:1;display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start}
+  /* Panel */
+  .panel{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.07);overflow:hidden;margin-bottom:20px}
+  .panel-hdr{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .panel-hdr h3{font-size:14px;font-weight:700;color:var(--navy)}
+  .panel-hdr span{font-size:11px;color:var(--muted)}
+  .panel-body{padding:18px}
+  /* Tabs */
+  .seg-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:14px}
+  .seg-tab{flex:1;padding:9px 6px;text-align:center;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+  .seg-tab.active{color:var(--gdark);border-bottom-color:var(--gdark)}
+  .seg-panel{display:none}.seg-panel.active{display:block}
+  /* Filter chips */
+  .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .chip{padding:4px 11px;border-radius:20px;font-size:11.5px;font-weight:600;border:1.5px solid var(--border);background:#fff;color:var(--muted);cursor:pointer;transition:all .15s}
+  .chip:hover{border-color:var(--gdark);color:var(--gdark)}
+  .chip.on{background:var(--gdark);color:#fff;border-color:var(--gdark)}
+  /* Search */
+  .search-mini{width:100%;border:1.5px solid var(--border);border-radius:6px;padding:7px 10px;font-size:13px;font-family:inherit;outline:none;margin-bottom:8px}
+  .search-mini:focus{border-color:var(--green)}
+  /* Recipient list */
+  .sel-actions{display:flex;gap:8px;margin-bottom:8px}
+  .btn-sm{padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--muted)}
+  .btn-sm:hover{border-color:var(--gdark);color:var(--gdark)}
+  .rec-list{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+  .rec-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;cursor:pointer;border:1px solid transparent}
+  .rec-item:hover{background:#F7F8FA}
+  .rec-item.on{background:#F0FDF4;border-color:#86EFAC}
+  .rec-item input[type=checkbox]{accent-color:var(--green);width:14px;height:14px;flex-shrink:0}
+  .rec-name{font-size:13px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rec-mob{font-size:11px;color:var(--muted);font-family:monospace}
+  .rec-tag{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;white-space:nowrap}
+  .tag-r{background:#DBEAFE;color:#1D4ED8}
+  .tag-w{background:#EDE9FE;color:#5B21B6}
+  .sel-badge{background:#F0FDF4;border:1px solid #86EFAC;border-radius:6px;padding:7px 12px;font-size:12px;color:#166534;font-weight:500;margin-top:8px;display:none}
+  .sel-badge.show{display:block}
+  /* Compose */
+  .compose-lbl{font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:5px;display:block}
+  .msg-type-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .type-btn{padding:6px 13px;border-radius:20px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--muted)}
+  .type-btn.active{background:var(--gdark);color:#fff;border-color:var(--gdark)}
+  textarea.msg-txt{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none;resize:vertical;min-height:100px}
+  textarea.msg-txt:focus{border-color:var(--green)}
+  /* Template */
+  .tmpl-select{width:100%;border:1.5px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13px;font-family:inherit;outline:none;margin-bottom:10px;appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236B7280' d='M0 0l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 12px center;padding-right:30px;cursor:pointer}
+  .tmpl-select:focus{border-color:var(--green)}
+  .tmpl-lang{width:100%;border:1.5px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13px;font-family:inherit;outline:none;margin-bottom:10px;appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236B7280' d='M0 0l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 12px center;padding-right:30px;cursor:pointer}
+  .tmpl-preview{background:#F7F8FA;border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12.5px;color:var(--text);white-space:pre-wrap;line-height:1.6;margin-bottom:10px;display:none;max-height:140px;overflow-y:auto}
+  /* Media upload */
+  .media-upload-box{border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;position:relative;background:#FAFAFA}
+  .media-upload-box:hover{border-color:var(--green);background:#F0FDF4}
+  .media-upload-box input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .media-file-preview{display:none;margin-top:8px;background:#F7F8FA;border-radius:6px;padding:8px 12px;font-size:12px;align-items:center;justify-content:space-between}
+  .media-file-preview.show{display:flex}
+  /* Send */
+  .delay-row{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+  .btn-send{width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px}
+  .btn-send:hover:not(:disabled){background:var(--gdark)}
+  .btn-send:disabled{opacity:.6;cursor:not-allowed}
+  /* Progress */
+  .progress-wrap{margin-top:14px;display:none}
+  .progress-wrap.show{display:block}
+  .prog-bg{background:#E5E7EB;border-radius:99px;height:8px;overflow:hidden;margin-bottom:6px}
+  .prog-bar{background:var(--green);height:100%;border-radius:99px;width:0%;transition:width .3s}
+  .prog-lbl{font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px}
+  .result-list{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+  .result-row{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;font-size:12px}
+  .result-row.ok{background:#F0FDF4;color:#166534}
+  .result-row.fail{background:#FEF2F2;color:#991B1B}
+  .summary{padding:10px;border-radius:6px;font-size:13px;font-weight:600;text-align:center;margin-bottom:8px;display:none}
+  .summary.ok{display:block;background:#DCFCE7;color:#166534}
+  .summary.fail{display:block;background:#FEE2E2;color:#991B1B}
+  /* Toast */
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.2);transform:translateY(60px);opacity:0;transition:all .3s;z-index:999}
+  .toast.show{transform:translateY(0);opacity:1}
+  .toast.ok{border-left:4px solid var(--green)}
+  .toast.err{border-left:4px solid var(--red)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+  @media(max-width:900px){.main{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <div class="login-hdr">
+      <div class="ico">💬</div>
+      <h2>SGS Broadcast</h2>
+      <p>WhatsApp Business Messaging</p>
+    </div>
+    <div class="login-accent"></div>
+    <div class="login-body">
+      <div><label>Password</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="login-err" id="loginErr">Incorrect password.</div>
+      <button class="login-btn" onclick="doLogin()">Sign In →</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="appWrap">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">💬 SGS WhatsApp Broadcast</div>
+      <div class="topbar-sub" id="topbar-sub">Loading contacts…</div>
+    </div>
+    <button class="btn-logout" style="margin-right:8px" onclick="window.location.href='sgs_admin.html'">📊 Admin</button><button class="btn-logout" onclick="logout()">Sign Out</button>
+  </div>
+  <div class="accent-bar"></div>
+
+  <div style="padding:16px 24px 0">      <!-- Railway API Setup -->
+      <div id="api-setup-banner" style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:13px;font-weight:700;color:#92400E;margin-bottom:4px">⚡ Railway Backend URL</div>
+          <div style="font-size:12px;color:#92400E" id="api-status">Not connected — set up Railway first</div>
+        </div>
+        <input type="text" id="api-base-input" placeholder="https://your-app.railway.app" style="border:1.5px solid #FED7AA;border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;flex:1;min-width:220px">
+        <button onclick="saveApiBase()" style="padding:8px 16px;background:#D97706;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">Save URL</button>
+      </div>
+
+</div>
+  <div class="main">
+
+    <!-- LEFT: Recipients -->
+    <div class="panel">
+      <div class="panel-hdr">
+        <h3>📋 Recipients</h3>
+        <span id="total-ct">—</span>
+      </div>
+      <div class="panel-body">
+        <div class="seg-tabs">
+          <div class="seg-tab active" onclick="switchSeg('retailers')">Retailers</div>
+          <div class="seg-tab" onclick="switchSeg('wholesalers')">Wholesalers</div>
+          <div class="seg-tab" onclick="switchSeg('all')">All</div>
+          <div class="seg-tab" onclick="switchSeg('conference')">🏖 Conf.</div>
+        </div>
+
+        <!-- Retailers -->
+        <div class="seg-panel active" id="seg-retailers">
+          <input class="search-mini" placeholder="🔍 Search…" oninput="renderSeg('retailers',this.value)">
+          <div class="sel-actions"><button class="btn-sm" onclick="selAll('retailers')">Select All</button><button class="btn-sm" onclick="selNone('retailers')">Clear</button></div>
+          <div class="rec-list" id="list-retailers"></div>
+        </div>
+
+        <!-- Wholesalers -->
+        <div class="seg-panel" id="seg-wholesalers">
+          <div style="font-size:11.5px;color:var(--muted);margin-bottom:8px">Selecting a wholesaler also selects <strong>all their retailers</strong></div>
+          <input class="search-mini" placeholder="🔍 Search wholesaler…" oninput="renderSeg('wholesalers',this.value)">
+          <div class="sel-actions"><button class="btn-sm" onclick="selAllWholesalers()">Select All</button><button class="btn-sm" onclick="selNoneWholesalers()">Clear All</button></div>
+          <div class="rec-list" id="list-wholesalers"></div>
+        </div>
+
+        <!-- All -->
+        <div class="seg-panel" id="seg-all">
+          <input class="search-mini" placeholder="🔍 Search…" oninput="renderSeg('all',this.value)">
+          <div class="sel-actions"><button class="btn-sm" onclick="selAll('all')">Select All</button><button class="btn-sm" onclick="selNone('all')">Clear</button></div>
+          <div class="rec-list" id="list-all"></div>
+        </div>
+
+        <!-- Conference -->
+        <div class="seg-panel" id="seg-conference">
+          <div class="chip-row" id="conf-chips"></div>
+          <input class="search-mini" placeholder="🔍 Search…" oninput="renderSeg('conference',this.value)">
+          <div class="sel-actions"><button class="btn-sm" onclick="selAll('conference')">Select All</button><button class="btn-sm" onclick="selNone('conference')">Clear</button></div>
+          <div class="rec-list" id="list-conference"></div>
+        </div>
+
+        <div class="sel-badge" id="selBadge"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Compose -->
+    <div>
+      <div class="panel">
+        <div class="panel-hdr"><h3>✏️ Compose Message</h3></div>
+        <div class="panel-body">
+
+          <!-- Message type -->
+          <span class="compose-lbl">Message Type</span>
+          <div class="msg-type-row">
+            <button class="type-btn active" onclick="setType('text',this)">💬 Text</button>
+            <button class="type-btn" onclick="setType('image',this)">🖼 Image</button>
+            <button class="type-btn" onclick="setType('video',this)">🎥 Video</button>
+            <button class="type-btn" onclick="setType('document',this)">📄 Doc</button>
+            <button class="type-btn" onclick="setType('template',this)">📋 Template</button>
+          </div>
+
+          <!-- Text -->
+          <div id="section-text">
+            <span class="compose-lbl">Message</span>
+            <textarea class="msg-txt" id="msg-text" placeholder="Type your message…"></textarea>
+          </div>
+
+          <!-- Media -->
+          <div id="section-media" style="display:none">
+            <span class="compose-lbl">Upload File</span>
+            <div class="media-upload-box" id="mediaBox" ondragover="event.preventDefault()" ondrop="onDrop(event)">
+              <input type="file" id="mediaFile" onchange="onFileChange(this)">
+              <div style="font-size:28px" id="mediaIcon">📎</div>
+              <p style="font-size:13px;color:var(--muted);margin-top:4px"><strong>Click to upload</strong> or drag & drop</p>
+            </div>
+            <div class="media-file-preview" id="mediaPreview">
+              <span id="mediaFileName" style="font-size:12px;font-weight:600"></span>
+              <button onclick="clearMedia()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px">✕</button>
+            </div>
+            <div style="margin-top:10px">
+              <span class="compose-lbl">Caption (optional)</span>
+              <textarea class="msg-txt" id="msg-caption" placeholder="Caption…" style="min-height:60px"></textarea>
+            </div>
+          </div>
+
+          <!-- Template -->
+          <div id="section-template" style="display:none">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <span class="compose-lbl" style="margin-bottom:0">Approved Template</span>
+              <button onclick="fetchTemplates()" id="fetchBtn" style="font-size:11px;color:var(--gdark);background:none;border:1.5px solid #86EFAC;border-radius:6px;padding:3px 10px;cursor:pointer;font-weight:600;font-family:inherit">↺ Fetch from Meta</button>
+            </div>
+            <select class="tmpl-select" id="tmpl-select" onchange="onTmplSelect()">
+              <option value="">— Select template —</option>
+            </select>
+            <span class="compose-lbl">Language</span>
+            <select class="tmpl-lang" id="tmpl-lang">
+              <option value="en">English (en)</option>
+              <option value="en_US">English US (en_US)</option>
+              <option value="hi">Hindi (hi)</option>
+              <option value="gu">Gujarati (gu)</option>
+              <option value="mr">Marathi (mr)</option>
+            </select>
+            <div class="tmpl-preview" id="tmpl-preview"></div>
+
+            <!-- Video upload for templates that need it -->
+            <div id="tmpl-media-section" style="display:none">
+              <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#166534">
+                <strong>📹 Upload video/image before each send</strong> — WhatsApp media IDs expire quickly so we upload fresh every time.
+              </div>
+              <div id="tmpl-media-status" style="margin-bottom:8px"></div>
+              <div class="media-upload-box" ondragover="event.preventDefault()" ondrop="onTmplDrop(event)">
+                <input type="file" id="tmplMediaFile" accept="video/*,image/*" onchange="onTmplFileSelect(this)">
+                <p style="font-size:12px;color:var(--muted)"><strong>Select video/image</strong> — uploaded automatically when you send</p>
+              </div>
+              <div id="tmpl-file-preview" style="display:none;margin-top:8px;background:#F7F8FA;border-radius:6px;padding:8px 12px;font-size:12px;display:none;align-items:center;justify-content:space-between">
+                <span id="tmpl-file-name" style="font-weight:600"></span>
+                <button onclick="clearTmplFile()" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Delay -->
+          <div style="margin-top:16px;margin-bottom:16px">
+            <span class="compose-lbl">Delay between messages</span>
+            <div class="delay-row">
+              <input type="range" id="delay" min="500" max="5000" step="100" value="1500" oninput="document.getElementById('delay-val').textContent=this.value+'ms'" style="flex:1;accent-color:var(--green)">
+              <span id="delay-val" style="font-size:13px;font-weight:600;color:var(--gdark);min-width:55px">1500ms</span>
+            </div>
+          </div>
+
+          <!-- Recipients Preview -->
+          <div id="recipients-preview-wrap" style="display:none;margin-bottom:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <span style="font-size:12px;font-weight:700;color:var(--navy)">📋 Sending to (<span id="preview-count">0</span>)</span>
+              <button onclick="document.getElementById('recipients-preview-wrap').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px">✕</button>
+            </div>
+            <div id="recipients-preview-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;font-size:12px"></div>
+          </div>
+
+          <!-- Send -->
+          <button class="btn" style="background:#374151;color:#fff;width:100%;padding:10px;border-radius:var(--radius);font-size:13px;font-weight:600;font-family:inherit;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px" onclick="showPreview()">👁 Preview Recipients</button>
+          <button class="btn-send" id="btnSend" onclick="send()">
+            📤 Send to <span id="sendCount">0</span> Recipients
+          </button>
+          <div class="progress-wrap" id="progressWrap">
+            <div class="prog-bg"><div class="prog-bar" id="progBar"></div></div>
+            <div class="prog-lbl" id="progLbl"></div>
+            <div class="summary" id="summary"></div>
+            <div class="result-list" id="resultList"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PASS       = 'yashthebest';
+const SB_URL     = 'https://oapgtrotlfgrjefanyss.supabase.co';
+const SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hcGd0cm90bGZncmplZmFueXNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMzk5NzIsImV4cCI6MjA5NjkxNTk3Mn0.thvxozgAtmhHjUGIufdqf1naYB8mOR-0sY09eGTyOTk';
+const WA_PHONE   = '1199473816581188';
+let   API_BASE   = localStorage.getItem('api_base') || 'https://sgsbroadcast-production.up.railway.app';
+const WA_WABA    = '1495630418445197';
+let   WA_TOKEN   = 'EAAOI3ZBZCZA6mQBRzLSnqGdf8ZC2b8Pp3JLZA8l1StNAdbwPiR0ZBnuEWyidEeZAFPcXsOO2S6w99vltVbjR0qZAkRq0Xgmsh27kupVRMZAyGXdXSjhwIsOzQ8HDAgSoiyPwb0bojsCUgNkMyegmg1I8Ve4ZC6nqa1nmozaFYJzBIH7sx5fREZAy4eg3SbzRZBxXLSTUVwZDZD';
+const SBH = { 'apikey': SB_KEY, 'Authorization': \`Bearer \${SB_KEY}\` };
+
+let retailers = [], wholesalers = [], selected = new Set();
+let currentType = 'text', mediaBlob = null;
+let wFilter = '', confFilter = '';
+let templates = [];   // fetched from Meta
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+function doLogin() {
+  if (document.getElementById('loginPass').value === PASS) {
+    document.getElementById('loginWrap').style.display = 'none';
+    document.getElementById('appWrap').style.display = 'flex';
+    init();
+  } else {
+    document.getElementById('loginErr').style.display = 'block';
+    document.getElementById('loginPass').value = '';
+  }
+}
+function logout() {
+  document.getElementById('appWrap').style.display = 'none';
+  document.getElementById('loginWrap').style.display = 'flex';
+}
+
+
+// Hardcoded fallback media IDs — updated after each successful upload
+function preloadTemplateMediaIds() {
+  const known = {
+    'jaisalmer_2026':  '2214261116041174',  // uploaded 23 Jun 2026
+    'trivandrum_2026': ''                    // upload video to get ID
+  };
+  Object.entries(known).forEach(([tmpl, id]) => {
+    if (id && !localStorage.getItem('tmpl_media_' + tmpl)) {
+      localStorage.setItem('tmpl_media_' + tmpl, id);
+    }
+  });
+}
+
+
+function saveApiBase() {
+  const val = document.getElementById('api-base-input').value.trim().replace(/\/$/, '');
+  if (!val) return;
+  API_BASE = val;
+  localStorage.setItem('api_base', val);
+  document.getElementById('api-status').textContent = '✓ Connected: ' + val;
+  document.getElementById('api-setup-banner').style.background = '#F0FDF4';
+  document.getElementById('api-setup-banner').style.borderColor = '#86EFAC';
+  document.querySelectorAll('#api-setup-banner *').forEach(el => { if(el.style.color) el.style.color = '#166534'; });
+  toast('✓ Backend connected!', 'ok');
+}
+
+function loadApiBase() {
+  const saved = localStorage.getItem('api_base') || API_BASE;
+  if (saved) {
+    API_BASE = saved;
+    document.getElementById('api-base-input').value = saved;
+    document.getElementById('api-status').textContent = '✓ Connected: ' + saved;
+    document.getElementById('api-setup-banner').style.background = '#F0FDF4';
+    document.getElementById('api-setup-banner').style.borderColor = '#86EFAC';
+    document.querySelectorAll('#api-setup-banner div').forEach(el => el.style.color = '#166534');
+  }
+}
+
+async function init() {
+  loadApiBase();
+  preloadTemplateMediaIds();
+  await loadContacts();
+  await fetchTemplates();
+}
+
+// ── Load contacts from Supabase ────────────────────────────────────────────
+async function sbFetch(table, fields, order) {
+  const PAGE = 1000; let rows = [], from = 0;
+  while (true) {
+    const res = await fetch(\`\${SB_URL}/rest/v1/\${table}?select=\${fields}&order=\${order}\`, {
+      headers: { ...SBH, Range: \`\${from}-\${from+PAGE-1}\`, 'Range-Unit': 'items', Prefer: 'count=none' }
+    });
+    if (!res.ok) throw new Error(\`\${table} HTTP \${res.status}\`);
+    const b = await res.json();
+    rows = rows.concat(b);
+    if (b.length < PAGE) break;
+    from += PAGE;
+  }
+  return rows;
+}
+
+async function loadContacts() {
+  try {
+    // Always load directly from Supabase — fast and reliable
+    const [master, forms] = await Promise.all([
+      sbFetch('retailer_master', 'retailer,wholesaler,mobile,w_mobile,conference', 'wholesaler.asc,retailer.asc'),
+      sbFetch('retailer_forms',  'firm_name,wholesaler_firm,mobile,retailer_name', 'wholesaler_firm.asc')
+    ]);
+
+    // Build a map from master first
+    const mobileMap = {};
+    master.forEach(m => {
+      if (!m.mobile || m.retailer === '__WHOLESALER_PLACEHOLDER__') return;
+      mobileMap[m.mobile] = { name: m.retailer, wholesaler: m.wholesaler||'', mobile: m.mobile, conference: m.conference||'', type:'retailer' };
+    });
+    // Forms override master (more up to date), and add new entries
+    forms.forEach(f => {
+      if (!f.mobile) return;
+      const name = f.firm_name || f.retailer_name || '';
+      if (!name) return;
+      mobileMap[f.mobile] = { name, wholesaler: f.wholesaler_firm||'', mobile: f.mobile, conference:'', type:'retailer' };
+    });
+    retailers = Object.values(mobileMap).sort((a,b) => a.name.localeCompare(b.name));
+
+    const wSeen = new Set();
+    wholesalers = [];
+    master.forEach(m => {
+      if (!m.wholesaler || wSeen.has(m.wholesaler)) return; // dedupe by name only
+      wSeen.add(m.wholesaler);
+      // Include wholesaler even if no mobile — show in list but can't select
+      wholesalers.push({ 
+        name: m.wholesaler, 
+        mobile: m.w_mobile || '', 
+        conference: m.conference||'', 
+        type:'wholesaler' 
+      });
+    });
+    wholesalers.sort((a,b) => a.name.localeCompare(b.name));
+
+    const total = retailers.length + wholesalers.length;
+    document.getElementById('total-ct').textContent = total + ' contacts';
+    document.getElementById('topbar-sub').textContent = retailers.length + ' retailers · ' + wholesalers.length + ' wholesalers';
+
+    buildConfChips();
+    ['retailers','wholesalers','all','conference'].forEach(s => renderSeg(s));
+  } catch(e) {
+    document.getElementById('topbar-sub').textContent = 'Error: ' + e.message;
+    toast('Load failed: ' + e.message, 'err');
+  }
+}
+
+// ── Wholesaler chips ────────────────────────────────────────────────────────
+function buildWChips() {
+  const row = document.getElementById('w-chips');
+  const ws  = [...new Set(retailers.map(r => r.wholesaler).filter(Boolean))].sort();
+  row.innerHTML = '';
+  const all = mkChip('All (' + retailers.length + ')', true);
+  all.onclick = () => { wFilter = ''; row.querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); all.classList.add('on'); renderSeg('retailers'); };
+  row.appendChild(all);
+  ws.forEach(w => {
+    const cnt = retailers.filter(r => r.wholesaler === w).length;
+    const c = mkChip(w + ' (' + cnt + ')');
+    c.title = w;
+    c.onclick = () => {
+      const isOn = c.classList.contains('on');
+      row.querySelectorAll('.chip').forEach(x => x.classList.remove('on'));
+      if (isOn) {
+        // deselect
+        all.classList.add('on');
+        retailers.filter(r => r.wholesaler === w).forEach(r => selected.delete(r.mobile));
+        wFilter = '';
+      } else {
+        c.classList.add('on');
+        wFilter = w;
+        retailers.filter(r => r.wholesaler === w).forEach(r => { if (r.mobile) selected.add(r.mobile); });
+        toast('✓ Selected ' + cnt + ' retailers under ' + w, 'ok');
+      }
+      renderSeg('retailers');
+      updateBadge();
+    };
+    row.appendChild(c);
+  });
+}
+
+// ── Conference chips ────────────────────────────────────────────────────────
+function buildConfChips() {
+  const row  = document.getElementById('conf-chips');
+  const all2 = [...retailers, ...wholesalers];
+  const confs = [...new Set(all2.map(d => d.conference).filter(Boolean))].sort();
+  row.innerHTML = '';
+  const allC = mkChip('All');
+  allC.classList.add('on');
+  allC.onclick = () => { confFilter=''; row.querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); allC.classList.add('on'); renderSeg('conference'); };
+  row.appendChild(allC);
+  const icons = { Kerala:'🌊', Jaisalmer:'🏜️', Both:'✨', None:'—', 'Kerala + Rameshwaram':'🛕' };
+  confs.forEach(c => {
+    const ch = mkChip((icons[c]||'📍')+' '+c);
+    ch.onclick = () => {
+      row.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+      ch.classList.add('on'); confFilter = c; renderSeg('conference');
+    };
+    row.appendChild(ch);
+  });
+}
+
+function mkChip(text, on) {
+  const b = document.createElement('button');
+  b.className = 'chip' + (on?' on':'');
+  b.textContent = text;
+  return b;
+}
+
+// ── Render recipient list ──────────────────────────────────────────────────
+function renderSeg(seg, q) {
+  q = (q||'').toLowerCase();
+  let data;
+  if (seg === 'retailers')        data = retailers;
+  else if (seg === 'wholesalers') data = wholesalers;
+  else if (seg === 'all')         data = [...retailers, ...wholesalers];
+  else                            data = [...retailers, ...wholesalers];
+
+  if (seg === 'retailers' && wFilter) data = data.filter(d => d.wholesaler === wFilter);
+  if (seg === 'conference' && confFilter) data = data.filter(d => (d.conference||'').toLowerCase() === confFilter.toLowerCase());
+  if (q) data = data.filter(d => d.name.toLowerCase().includes(q) || d.mobile.includes(q) || (d.wholesaler||'').toLowerCase().includes(q));
+
+  const el = document.getElementById('list-' + seg);
+  if (!data.length) { el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:13px">No contacts</div>'; return; }
+
+  el.innerHTML = data.map((d,i) => \`
+    <div class="rec-item \${selected.has(d.mobile)?'on':''}" onclick="toggle('\${d.mobile}',this)">
+      <input type="checkbox" \${selected.has(d.mobile)?'checked':''} onclick="event.stopPropagation();toggle('\${d.mobile}',this.closest('.rec-item'))">
+      <div style="flex:1;min-width:0">
+        <div class="rec-name">\${d.name}</div>
+        <div class="rec-mob">\${d.mobile}</div>
+      </div>
+      <span class="rec-tag \${d.type==='retailer'?'tag-r':'tag-w'}">\${d.type}</span>
+    </div>\`).join('');
+}
+
+function toggle(mobile, el) {
+  const isRetailer = retailers.find(r => r.mobile === mobile);
+  const isWholesaler = wholesalers.find(w => w.mobile === mobile);
+
+  if (selected.has(mobile)) {
+    selected.delete(mobile);
+    el.classList.remove('on');
+    el.querySelector('input').checked = false;
+    // If wholesaler, also deselect all their retailers
+    if (isWholesaler) {
+      retailers.filter(r => r.wholesaler === isWholesaler.name).forEach(r => selected.delete(r.mobile));
+    }
+  } else {
+    selected.add(mobile);
+    el.classList.add('on');
+    el.querySelector('input').checked = true;
+    // If wholesaler, also select all their retailers
+    if (isWholesaler) {
+      const group = retailers.filter(r => r.wholesaler === isWholesaler.name);
+      group.forEach(r => { if (r.mobile) selected.add(r.mobile); });
+      if (group.length) toast('✓ ' + isWholesaler.name + ' + ' + group.length + ' retailers selected', 'ok');
+    }
+  }
+  updateBadge();
+}
+
+function selAll(seg) {
+  let data;
+  if (seg==='retailers') data = wFilter ? retailers.filter(r=>r.wholesaler===wFilter) : retailers;
+  else if (seg==='wholesalers') data = wholesalers;
+  else if (seg==='conference') data = confFilter ? [...retailers,...wholesalers].filter(d=>(d.conference||'').toLowerCase()===confFilter.toLowerCase()) : [...retailers,...wholesalers];
+  else data = [...retailers,...wholesalers];
+  data.forEach(d => { if(d.mobile) selected.add(d.mobile); });
+  renderSeg(seg); updateBadge();
+}
+function selNone(seg) {
+  let data;
+  if (seg==='retailers') data = retailers;
+  else if (seg==='wholesalers') data = wholesalers;
+  else if (seg==='conference') data = [...retailers,...wholesalers];
+  else data = [...retailers,...wholesalers];
+  data.forEach(d => selected.delete(d.mobile));
+  renderSeg(seg); updateBadge();
+}
+function updateBadge() {
+  const n = selected.size;
+  const el = document.getElementById('selBadge');
+  el.textContent = '✓ ' + n + ' recipient' + (n!==1?'s':'') + ' selected';
+  el.className = 'sel-badge' + (n>0?' show':'');
+  document.getElementById('sendCount').textContent = n;
+}
+function switchSeg(seg) {
+  document.querySelectorAll('.seg-tab').forEach((t,i)=>t.classList.toggle('active',['retailers','wholesalers','all','conference'][i]===seg));
+  document.querySelectorAll('.seg-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('seg-'+seg).classList.add('active');
+  if (seg==='wholesalers') renderWholesalerChips('');
+}
+
+
+// ── Wholesaler chips (in wholesalers tab) ─────────────────────────────────
+function renderWholesalerChips(q) {
+  q = (q||'').toLowerCase();
+  const el = document.getElementById('wholesaler-chips-list');
+  let ws = wholesalers;
+  if (q) ws = ws.filter(w => w.name.toLowerCase().includes(q));
+  if (!ws.length) { el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:13px">No wholesalers</div>'; return; }
+  el.innerHTML = ws.map(w => {
+    const rtCount = retailers.filter(r => r.wholesaler === w.name).length;
+    const isOn = !!(w.mobile && selected.has(w.mobile));
+    const noMob = !w.mobile;
+    const idx = wholesalers.indexOf(w);
+    const mobTxt = noMob ? '⚠ No mobile — add in admin' : (w.mobile + ' · ' + rtCount + ' retailer' + (rtCount!==1?'s':''));
+    const border = isOn ? '#86EFAC' : noMob ? '#FECACA' : 'var(--border)';
+    const bg = isOn ? '#F0FDF4' : noMob ? '#FFF5F5' : '#fff';
+    const tag = noMob ? 'no mobile' : 'wholesaler';
+    const tagBg = noMob ? '#FEE2E2' : '#EDE9FE';
+    const tagClr = noMob ? '#991B1B' : '#5B21B6';
+    const clickAttr = noMob ? '' : \`onclick="toggleWholesalerByIdx(\${idx},this)"\`;
+    return \`<div \${clickAttr} style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;cursor:\${noMob?'default':'pointer'};border:1.5px solid \${border};background:\${bg};transition:all .15s">
+      <input type="checkbox" \${isOn?'checked':''} \${noMob?'disabled':\`onclick="event.stopPropagation();toggleWholesalerByIdx(\${idx},this.closest('[onclick]'))"\`} style="accent-color:var(--green);width:15px;height:15px;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${w.name}</div>
+        <div style="font-size:11px;color:\${noMob?'#EF4444':'var(--muted)'};font-family:monospace">\${mobTxt}</div>
+      </div>
+      <span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;background:\${tagBg};color:\${tagClr}">\${tag}</span>
+    </div>\`;
+  }).join('');
+}
+
+function toggleWholesalerByIdx(idx, el) {
+  const w = wholesalers[idx];
+  if (!w || !w.mobile) return;
+  toggleWholesaler(w.name, w.mobile, el);
+}
+
+function toggleWholesaler(wName, wMobile, el) {
+  const isOn = selected.has(wMobile);
+  const group = retailers.filter(r => r.wholesaler === wName);
+  if (isOn) {
+    // Deselect wholesaler + all their retailers
+    selected.delete(wMobile);
+    group.forEach(r => selected.delete(r.mobile));
+  } else {
+    // Select wholesaler + all their retailers
+    selected.add(wMobile);
+    group.forEach(r => { if (r.mobile) selected.add(r.mobile); });
+    toast('✓ Selected ' + wName + ' + ' + group.length + ' retailers', 'ok');
+  }
+  renderWholesalerChips(document.querySelector('#seg-wholesalers .search-mini')?.value||'');
+  updateBadge();
+}
+
+function selAllWholesalers() {
+  wholesalers.forEach(w => {
+    selected.add(w.mobile);
+    retailers.filter(r => r.wholesaler === w.name).forEach(r => { if(r.mobile) selected.add(r.mobile); });
+  });
+  renderWholesalerChips('');
+  updateBadge();
+  toast('Selected all wholesalers + their retailers', 'ok');
+}
+function selNoneWholesalers() {
+  wholesalers.forEach(w => {
+    selected.delete(w.mobile);
+    retailers.filter(r => r.wholesaler === w.name).forEach(r => selected.delete(r.mobile));
+  });
+  renderWholesalerChips('');
+  updateBadge();
+}
+
+// ── Recipients preview ─────────────────────────────────────────────────────
+function showPreview() {
+  if (!selected.size) { toast('Select recipients first', 'err'); return; }
+  const all = [...retailers, ...wholesalers];
+  // Group by wholesaler
+  const groups = {};
+  const standalone = [];
+  selected.forEach(mob => {
+    const c = all.find(x => x.mobile === mob);
+    if (!c) return;
+    if (c.type === 'retailer') {
+      const w = c.wholesaler || '(No wholesaler)';
+      if (!groups[w]) groups[w] = [];
+      groups[w].push(c);
+    } else {
+      standalone.push(c);
+    }
+  });
+  let html = '';
+  // Wholesalers first
+  if (standalone.length) {
+    html += \`<div style="padding:8px 12px;background:#EDE9FE;font-size:11.5px;font-weight:700;color:#5B21B6;position:sticky;top:0">WHOLESALERS (\${standalone.length})</div>\`;
+    html += standalone.map(w => \`<div style="padding:6px 12px;border-bottom:1px solid #F0F2F5;font-size:12px;display:flex;justify-content:space-between"><span>\${w.name}</span><span style="font-family:monospace;color:var(--muted)">\${w.mobile}</span></div>\`).join('');
+  }
+  // Retailers grouped by wholesaler
+  Object.entries(groups).sort().forEach(([w, rs]) => {
+    html += \`<div style="padding:6px 12px;background:#F7F8FA;font-size:11px;font-weight:700;color:var(--navy);border-bottom:1px solid var(--border);position:sticky;top:0">\${w} (\${rs.length})</div>\`;
+    html += rs.map(r => \`<div style="padding:5px 12px 5px 20px;border-bottom:1px solid #F5F5F5;font-size:12px;display:flex;justify-content:space-between"><span>\${r.name}</span><span style="font-family:monospace;color:var(--muted)">\${r.mobile}</span></div>\`).join('');
+  });
+  const listEl = document.getElementById('recipients-preview-list');
+  listEl.innerHTML = html;
+  document.getElementById('preview-count').textContent = selected.size;
+  document.getElementById('recipients-preview-wrap').style.display = 'block';
+  listEl.scrollTop = 0;
+}
+
+// ── Message type ───────────────────────────────────────────────────────────
+function setType(type, btn) {
+  currentType = type;
+  document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('section-text').style.display     = type==='text'?'block':'none';
+  document.getElementById('section-media').style.display    = ['image','video','document'].includes(type)?'block':'none';
+  document.getElementById('section-template').style.display = type==='template'?'block':'none';
+  if (type==='image')    document.getElementById('mediaIcon').textContent='🖼️';
+  if (type==='video')    document.getElementById('mediaIcon').textContent='🎥';
+  if (type==='document') document.getElementById('mediaIcon').textContent='📄';
+}
+
+// ── Media ──────────────────────────────────────────────────────────────────
+function onFileChange(inp) { if(inp.files[0]) setMedia(inp.files[0]); }
+function onDrop(e) { e.preventDefault(); if(e.dataTransfer.files[0]) setMedia(e.dataTransfer.files[0]); }
+function setMedia(file) {
+  mediaBlob = file;
+  document.getElementById('mediaFileName').textContent = file.name + ' (' + (file.size/1024/1024).toFixed(1) + 'MB)';
+  document.getElementById('mediaPreview').classList.add('show');
+}
+function clearMedia() { mediaBlob=null; document.getElementById('mediaFile').value=''; document.getElementById('mediaPreview').classList.remove('show'); }
+
+// ── Template media upload ──────────────────────────────────────────────────
+function onTmplFileSelect(inp) {
+  if (!inp.files[0]) return;
+  const file = inp.files[0];
+  document.getElementById('tmpl-file-name').textContent = file.name + ' (' + (file.size/1024/1024).toFixed(1) + 'MB)';
+  document.getElementById('tmpl-file-preview').style.display = 'flex';
+  document.getElementById('tmpl-media-status').innerHTML = '<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:6px;padding:7px 10px;font-size:12px;color:#92400E">⏳ File selected — will upload automatically when you click Send</div>';
+}
+function onTmplDrop(e) {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if (!f) return;
+  document.getElementById('tmplMediaFile').files = e.dataTransfer.files;
+  onTmplFileSelect(document.getElementById('tmplMediaFile'));
+}
+function clearTmplFile() {
+  document.getElementById('tmplMediaFile').value = '';
+  document.getElementById('tmpl-file-preview').style.display = 'none';
+  document.getElementById('tmpl-media-status').innerHTML = '';
+}
+
+async function uploadTmplMedia(file) {
+  const tmpl = document.getElementById('tmpl-select').value;
+  if (!tmpl) { toast('Select a template first', 'err'); return; }
+  const statusEl = document.getElementById('tmpl-media-status');
+
+  const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+  statusEl.innerHTML = \`<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:6px;padding:8px 12px;font-size:12px;color:#92400E">
+    ⏳ Uploading \${file.name} (\${sizeMB}MB) via Railway… this may take up to 60 seconds for large files.
+    <div style="background:#FED7AA;border-radius:99px;height:4px;margin-top:8px;overflow:hidden">
+      <div id="upload-progress-bar" style="background:#D97706;height:100%;width:0%;transition:width 30s linear"></div>
+    </div>
+  </div>\`;
+
+  // Animate progress bar
+  setTimeout(() => {
+    const bar = document.getElementById('upload-progress-bar');
+    if (bar) bar.style.width = '90%';
+  }, 100);
+
+  try {
+    if (!API_BASE) throw new Error('Railway backend URL not set.');
+
+    const fd = new FormData();
+    fd.append('file', file);
+
+    // Use XHR so we can track actual progress
+    const result = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', \`\${API_BASE}/upload-media\`);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          const bar = document.getElementById('upload-progress-bar');
+          if (bar) { bar.style.transition = 'none'; bar.style.width = pct + '%'; }
+          statusEl.querySelector && (statusEl.innerHTML = statusEl.innerHTML); // keep alive
+        }
+      };
+
+      xhr.onload = () => {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (xhr.status === 200 && data.id) resolve(data);
+          else reject(new Error(data.error || \`HTTP \${xhr.status}: \${xhr.responseText.slice(0,200)}\`));
+        } catch(e) { reject(new Error('Invalid response from server')); }
+      };
+      xhr.onerror   = () => reject(new Error('Network error — check Railway is running'));
+      xhr.ontimeout = () => reject(new Error('Timeout — file may be too large (max 16MB for video)'));
+      xhr.timeout   = 120000; // 2 min timeout
+      xhr.send(fd);
+    });
+
+    localStorage.setItem('tmpl_media_' + tmpl, result.id);
+    statusEl.innerHTML = \`<div style="background:#DCFCE7;border:1px solid #86EFAC;border-radius:6px;padding:8px 12px;font-size:12px;color:#166534">
+      ✓ <strong>Uploaded!</strong> Media ID: <code style="background:#fff;padding:1px 5px;border-radius:3px">\${result.id}</code><br>
+      <span style="opacity:.8">Saved for \${tmpl} — ready to send.</span>
+    </div>\`;
+    toast('✓ Media uploaded!', 'ok');
+
+  } catch(e) {
+    statusEl.innerHTML = \`<div style="background:#FEE2E2;border:1px solid #FECACA;border-radius:6px;padding:8px 12px;font-size:12px;color:#991B1B">
+      ✗ <strong>Upload failed:</strong> \${e.message}
+    </div>\`;
+    toast('Upload failed', 'err');
+    console.error('Upload error:', e);
+  }
+}
+
+// ── Fetch templates from Meta ──────────────────────────────────────────────
+async function fetchTemplates() {
+  const btn = document.getElementById('fetchBtn');
+  if (btn) { btn.textContent = '⏳…'; btn.disabled = true; }
+  try {
+    const tmplUrl = API_BASE
+      ? \`\${API_BASE}/templates\`
+      : \`https://graph.facebook.com/v20.0/\${WA_WABA}/message_templates?fields=name,status,language,components&limit=100\`;
+    const tmplHeaders = API_BASE ? {} : { Authorization: \`Bearer \${WA_TOKEN}\` };
+    const res = await fetch(tmplUrl, { headers: tmplHeaders });
+    if (!res.ok) { const e=await res.json().catch(()=>{}); throw new Error(e?.error?.message||'HTTP '+res.status); }
+    const data = await res.json();
+    templates = (data.data||[]).filter(t => t.status==='APPROVED');
+    const sel = document.getElementById('tmpl-select');
+    sel.innerHTML = '<option value="">— Select template —</option>';
+    templates.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.name;
+      o.textContent = t.name + ' (' + t.language + ')';
+      o.dataset.lang = t.language;
+      o.dataset.components = JSON.stringify(t.components||[]);
+      sel.appendChild(o);
+    });
+    toast('✓ ' + templates.length + ' templates loaded', 'ok');
+  } catch(e) {
+    toast('Fetch failed: ' + e.message, 'err');
+  } finally {
+    if (btn) { btn.textContent = '↺ Fetch from Meta'; btn.disabled = false; }
+  }
+}
+
+// ── On template select ─────────────────────────────────────────────────────
+function onTmplSelect() {
+  const sel = document.getElementById('tmpl-select');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+
+  // Set language
+  document.getElementById('tmpl-lang').value = opt.dataset.lang || 'en';
+
+  // Parse components
+  let comps = [];
+  try { comps = JSON.parse(opt.dataset.components || '[]'); } catch(e) {}
+
+  // Show body preview
+  const body = comps.find(c => c.type === 'BODY');
+  const prev = document.getElementById('tmpl-preview');
+  if (body?.text) { prev.textContent = body.text; prev.style.display = 'block'; }
+  else prev.style.display = 'none';
+
+  // Show media section if VIDEO/IMAGE header
+  const header = comps.find(c => c.type === 'HEADER');
+  const mediaSection = document.getElementById('tmpl-media-section');
+  // Only show media section if we KNOW the template has a video/image header
+  // If no component data, hide it (text templates don't need media)
+  if (header && ['VIDEO','IMAGE'].includes(header.format)) {
+    mediaSection.style.display = 'block';
+    const stored = localStorage.getItem('tmpl_media_' + opt.value);
+    const statusEl = document.getElementById('tmpl-media-status');
+    if (stored) {
+      statusEl.innerHTML = \`<div style="background:#DCFCE7;border:1px solid #86EFAC;border-radius:6px;padding:8px 12px;font-size:12px;color:#166534">✓ Media ID saved — ready to send. <button onclick="localStorage.removeItem('tmpl_media_\${opt.value}');onTmplSelect()" style="background:none;border:none;color:#991B1B;cursor:pointer;font-size:12px">Clear</button></div>\`;
+    } else {
+      statusEl.innerHTML = \`<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:6px;padding:8px 12px;font-size:12px;color:#92400E">⚠ No media uploaded yet for this template. Upload below.</div>\`;
+    }
+  } else {
+    // No video/image header — hide media section
+    mediaSection.style.display = 'none';
+    document.getElementById('tmplMediaFile').value = '';
+    document.getElementById('tmpl-file-preview').style.display = 'none';
+  }
+}
+
+// ── Build payload ──────────────────────────────────────────────────────────
+function buildPayload(to, mediaId) {
+  const base = { messaging_product: 'whatsapp', recipient_type: 'individual', to };
+
+  if (currentType === 'text') {
+    return { ...base, type: 'text', text: { body: document.getElementById('msg-text').value.trim(), preview_url: true } };
+  }
+
+  if (['image','video','document'].includes(currentType)) {
+    const caption = document.getElementById('msg-caption').value.trim();
+    const obj = caption ? { id: mediaId, caption } : { id: mediaId };
+    return { ...base, type: currentType, [currentType]: obj };
+  }
+
+  if (currentType === 'template') {
+    const name = document.getElementById('tmpl-select').value;
+    const lang = document.getElementById('tmpl-lang').value || 'en';
+
+    // Use fresh uploaded ID first, fall back to localStorage
+    const storedId = window._freshMediaId || localStorage.getItem('tmpl_media_' + name);
+
+    // Get component structure from dropdown
+    const sel = document.getElementById('tmpl-select');
+    const opt = sel.options[sel.selectedIndex];
+    let comps = [];
+    try { comps = JSON.parse(opt?.dataset?.components || '[]'); } catch(e) {}
+    const header = comps.find(c => c.type === 'HEADER');
+    const body   = comps.find(c => c.type === 'BODY');
+    const bodyVarCount = body ? (body.text.match(/{{\d+}}/g) || []).length : 0;
+
+    const components = [];
+
+    // Add header component only if we have a media ID AND template has VIDEO/IMAGE header
+    if (storedId && header && ['VIDEO','IMAGE'].includes(header.format)) {
+      const hType = header.format.toLowerCase();
+      components.push({
+        type: 'header',
+        parameters: [{ type: hType, [hType]: { id: storedId } }]
+      });
+    }
+
+    // Add body variables if template has them
+    if (bodyVarCount > 0) {
+      const varInputs = document.querySelectorAll('#var-rows .var-input');
+      const vars = [...varInputs].map(i => i.value.trim()).filter(Boolean).slice(0, bodyVarCount);
+      if (vars.length > 0) {
+        components.push({ type: 'body', parameters: vars.map(v => ({ type: 'text', text: v })) });
+      }
+    }
+
+    const tmplObj = { name, language: { code: lang } };
+    if (components.length > 0) tmplObj.components = components;
+
+    return { ...base, type: 'template', template: tmplObj };
+  }
+}
+
+// ── Send ───────────────────────────────────────────────────────────────────
+async function send() {
+  if (!selected.size) { toast('Select recipients first', 'err'); return; }
+  if (currentType === 'text' && !document.getElementById('msg-text').value.trim()) { toast('Enter a message', 'err'); return; }
+  if (['image','video','document'].includes(currentType) && !mediaBlob) { toast('Upload a file first', 'err'); return; }
+  if (currentType === 'template' && !document.getElementById('tmpl-select').value) { toast('Select a template', 'err'); return; }
+
+  // For templates with media header — check if file is selected
+  if (currentType === 'template') {
+    const tmplName = document.getElementById('tmpl-select').value;
+    const sel = document.getElementById('tmpl-select');
+    const opt = sel.options[sel.selectedIndex];
+    let comps = [];
+    try { comps = JSON.parse(opt?.dataset?.components || '[]'); } catch(e) {}
+    const header = comps.find(c => c.type === 'HEADER');
+    const needsMedia = header && ['VIDEO','IMAGE'].includes(header.format);
+    const tmplFile = document.getElementById('tmplMediaFile')?.files[0];
+    // Only block if we have component data confirming it needs media
+    if (needsMedia && comps.length > 0 && !tmplFile) {
+      toast('This template needs a video/image — please select the file first', 'err');
+      document.getElementById('tmpl-media-section').scrollIntoView({behavior:'smooth'});
+      return;
+    }
+  }
+
+  const btn = document.getElementById('btnSend');
+  btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Sending…';
+  document.getElementById('progressWrap').classList.add('show');
+  document.getElementById('resultList').innerHTML = '';
+  document.getElementById('summary').className = 'summary';
+
+  const nums  = [...selected];
+  const delay = Number(document.getElementById('delay').value);
+  let ok = 0, fail = 0;
+
+  // Upload template media fresh every send (only if file selected)
+  if (currentType === 'template') {
+    const tmplName = document.getElementById('tmpl-select').value;
+    const tmplFile = document.getElementById('tmplMediaFile')?.files[0];
+    window._freshMediaId = null;  // reset
+    if (tmplFile) {
+      document.getElementById('progLbl').textContent = 'Uploading media…';
+      try {
+        const fd = new FormData();
+        fd.append('file', tmplFile);
+        const r = await fetch(\`\${API_BASE}/upload-media\`, { method:'POST', body:fd });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'Upload failed');
+        // Store temporarily for this send session only
+        window._freshMediaId = d.id;
+        document.getElementById('tmpl-media-status').innerHTML = '<div style="background:#DCFCE7;border:1px solid #86EFAC;border-radius:6px;padding:7px 10px;font-size:12px;color:#166534">✓ Uploaded fresh! Sending now…</div>';
+        console.log('Fresh media ID:', d.id);
+      } catch(e) {
+        toast('Media upload failed: ' + e.message, 'err');
+        btn.disabled=false; btn.innerHTML='📤 Send to <span id="sendCount">'+selected.size+'</span> Recipients';
+        return;
+      }
+    }
+  }
+
+  // Upload regular media once
+  let mediaId = null;
+  if (['image','video','document'].includes(currentType)) {
+    try {
+      document.getElementById('progLbl').textContent = 'Uploading media…';
+      const extR = mediaBlob.name.split('.').pop().toLowerCase();
+      const mimeR = { mp4:'video/mp4', mov:'video/quicktime', jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', pdf:'application/pdf' }[extR] || mediaBlob.type;
+      const fixedBlob = new File([mediaBlob], mediaBlob.name, { type: mimeR });
+      const form = new FormData();
+      form.append('messaging_product', 'whatsapp');
+      form.append('file', fixedBlob);
+      const r = await fetch(\`https://graph.facebook.com/v20.0/\${WA_PHONE}/media\`, {
+        method:'POST', headers:{Authorization:\`Bearer \${WA_TOKEN}\`}, body:form
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error?.message || 'Media upload failed');
+      mediaId = d.id;
+    } catch(e) { toast('Media upload failed: '+e.message,'err'); btn.disabled=false; btn.innerHTML='📤 Send to <span id="sendCount">'+selected.size+'</span> Recipients'; return; }
+  }
+
+  for (let i = 0; i < nums.length; i++) {
+    const mob = nums[i];
+    const all = [...retailers,...wholesalers];
+    const contact = all.find(c => c.mobile === mob);
+    const label   = contact?.name || mob;
+    const to      = fmt(mob);
+
+    document.getElementById('progLbl').textContent = \`Sending \${i+1}/\${nums.length} — \${label}\`;
+    document.getElementById('progBar').style.width = ((i+1)/nums.length*100) + '%';
+
+    try {
+      const payload = buildPayload(to, mediaId);
+      const endpoint = API_BASE ? \`\${API_BASE}/send-message\` : \`https://graph.facebook.com/v20.0/\${WA_PHONE}/messages\`;
+      const sendHeaders = API_BASE
+        ? { 'Content-Type': 'application/json' }
+        : { Authorization: \`Bearer \${WA_TOKEN}\`, 'Content-Type': 'application/json' };
+      const res = await fetch(endpoint, { method:'POST', headers: sendHeaders, body:JSON.stringify(payload) });
+      const data = await res.json();
+      console.log('Payload:', JSON.stringify(payload));
+      console.log('Response:', JSON.stringify(data));
+      if (res.ok && data.messages) { ok++; addRow(label, mob, true); }
+      else {
+        const errMsg = data.error?.error_user_msg || data.error?.message || 'Failed';
+        const errCode = data.error?.code || '';
+        fail++;
+        addRow(label, mob, false, \`(#\${errCode}) \${errMsg}\`);
+      }
+    } catch(e) { fail++; addRow(label, mob, false, e.message); }
+
+    if (i < nums.length-1) await sleep(delay);
+  }
+
+  document.getElementById('progBar').style.width = '100%';
+  document.getElementById('progLbl').textContent = 'Done!';
+  const sumEl = document.getElementById('summary');
+  sumEl.textContent = fail===0 ? '✅ All '+ok+' sent!' : '⚠ '+ok+' sent, '+fail+' failed';
+  sumEl.className = 'summary ' + (fail===0?'ok':'fail');
+  btn.disabled = false;
+  btn.innerHTML = '📤 Send to <span id="sendCount">'+selected.size+'</span> Recipients';
+  toast(ok+' sent'+(fail?' · '+fail+' failed':''), fail?'err':'ok');
+  window._freshMediaId = null;  // clear fresh media ID
+
+
+}
+
+function fmt(n) {
+  n = n.replace(/\D/g,'');
+  if (n.length===10) n = '91'+n;
+  if (n.startsWith('0') && n.length===11) n = '91'+n.slice(1);
+  return n;
+}
+function addRow(name, num, ok, err) {
+  const el = document.createElement('div');
+  el.className = 'result-row ' + (ok?'ok':'fail');
+  el.innerHTML = \`<span>\${ok?'✓':'✗'}</span><span style="flex:1">\${name}</span><span style="font-family:monospace;font-size:11px">\${num}</span>\${err?\`<span style="opacity:.8;font-size:11px"> — \${err}</span>\`:''}\`;
+  document.getElementById('resultList').appendChild(el);
+  document.getElementById('resultList').scrollTop = 9999;
+}
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+function toast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast '+type+' show';
+  setTimeout(()=>t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
+`);
+});
+
 app.get('/', (req, res) => res.json({ status: 'ok', phone: WA_PHONE, pendingReplies: Object.keys(pendingVideoReplies).length }));
 
 app.get('/test-token', async (req, res) => {
