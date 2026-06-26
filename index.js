@@ -228,4 +228,138 @@ app.post('/send-video-reply', async (req, res) => {
   }
 });
 
+
+// ── BIRTHDAY & ANNIVERSARY CRON JOB ──────────────────────────────────────────
+const SB_URL_SGS = 'https://oapgtrotlfgrjefanyss.supabase.co';
+const SB_KEY_SGS = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hcGd0cm90bGZncmplZmFueXNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMzk5NzIsImV4cCI6MjA5NjkxNTk3Mn0.thvxozgAtmhHjUGIufdqf1naYB8mOR-0sY09eGTyOTk';
+const SB_HDR     = { apikey: SB_KEY_SGS, Authorization: `Bearer ${SB_KEY_SGS}` };
+
+async function sendTemplate(to, templateName) {
+  const num = to.replace(/[^0-9]/g, '');
+  const phone = num.length === 10 ? '91' + num : num;
+  const r = await fetch(`https://graph.facebook.com/v20.0/${WA_PHONE}/messages`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: phone,
+      type: 'template',
+      template: { name: templateName, language: { code: 'en' } }
+    })
+  });
+  const data = await r.json();
+  return { ok: r.ok, data };
+}
+
+async function runBirthdayAnniversaryCron() {
+  // Get today's date in DD/MM format (matches Indian date format in DB)
+  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const day     = String(now.getDate()).padStart(2, '0');
+  const month   = String(now.getMonth() + 1).padStart(2, '0');
+  const todayDM = `${day}/${month}`; // e.g. "26/06"
+  console.log(`[CRON] Running birthday/anniversary check for ${todayDM}`);
+
+  try {
+    // Fetch all retailers with birthday or anniversary
+    let rows = [], from = 0;
+    while (true) {
+      const r = await fetch(
+        `${SB_URL_SGS}/rest/v1/retailer_master?select=retailer,mobile,birthday,anniversary&limit=1000&offset=${from}`,
+        { headers: { ...SB_HDR, Range: `${from}-${from+999}`, 'Range-Unit': 'items', Prefer: 'count=none' } }
+      );
+      const b = await r.json();
+      rows = rows.concat(b);
+      if (b.length < 1000) break;
+      from += 1000;
+    }
+
+    let birthdayCount = 0, anniversaryCount = 0;
+
+    for (const row of rows) {
+      if (!row.mobile) continue;
+
+      // Check birthday
+      if (row.birthday) {
+        // Parse birthday — could be DD/MM/YYYY or DD-MM-YYYY or YYYY-MM-DD
+        const bday = row.birthday.toString().trim();
+        const bdayDM = extractDayMonth(bday);
+        if (bdayDM === todayDM) {
+          const result = await sendTemplate(row.mobile, 'birthday');
+          console.log(`[BIRTHDAY] ${row.retailer} (${row.mobile}): ${result.ok ? '✓' : '✗'}`);
+          if (result.ok) birthdayCount++;
+          await sleep(500);
+        }
+      }
+
+      // Check anniversary
+      if (row.anniversary) {
+        const ann = row.anniversary.toString().trim();
+        const annDM = extractDayMonth(ann);
+        if (annDM === todayDM) {
+          const result = await sendTemplate(row.mobile, 'anniversary');
+          console.log(`[ANNIVERSARY] ${row.retailer} (${row.mobile}): ${result.ok ? '✓' : '✗'}`);
+          if (result.ok) anniversaryCount++;
+          await sleep(500);
+        }
+      }
+    }
+
+    console.log(`[CRON] Done — ${birthdayCount} birthday msgs, ${anniversaryCount} anniversary msgs sent`);
+  } catch(e) {
+    console.error('[CRON] Error:', e.message);
+  }
+}
+
+function extractDayMonth(dateStr) {
+  // Handle formats: DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, MM/DD/YYYY
+  dateStr = dateStr.trim();
+  let day, month;
+  if (dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    if (parts[0].length === 4) {
+      // YYYY/MM/DD
+      month = parts[1]; day = parts[2];
+    } else if (parseInt(parts[0]) > 12) {
+      // DD/MM/YYYY
+      day = parts[0]; month = parts[1];
+    } else {
+      // Could be MM/DD/YYYY or DD/MM/YYYY — assume DD/MM for Indian format
+      day = parts[0]; month = parts[1];
+    }
+  } else if (dateStr.includes('-')) {
+    const parts = dateStr.split('-');
+    if (parts[0].length === 4) {
+      // YYYY-MM-DD
+      month = parts[1]; day = parts[2].substring(0, 2);
+    } else {
+      // DD-MM-YYYY
+      day = parts[0]; month = parts[1];
+    }
+  } else {
+    return null;
+  }
+  return String(parseInt(day)).padStart(2, '0') + '/' + String(parseInt(month)).padStart(2, '0');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Schedule cron — runs every day at 9:00 AM IST (3:30 AM UTC)
+function scheduleCron() {
+  const now      = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const target   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  target.setHours(9, 0, 0, 0);
+  // If 9 AM already passed today, schedule for tomorrow
+  if (now >= target) target.setDate(target.getDate() + 1);
+  const msUntil = target - now;
+  console.log(`[CRON] Next birthday/anniversary check in ${Math.round(msUntil/1000/60)} minutes`);
+  setTimeout(() => {
+    runBirthdayAnniversaryCron();
+    // Then repeat every 24 hours
+    setInterval(runBirthdayAnniversaryCron, 24 * 60 * 60 * 1000);
+  }, msUntil);
+}
+
+scheduleCron();
+
 app.listen(process.env.PORT || 3000, () => console.log('SGS API running on port ' + (process.env.PORT || 3000)));
