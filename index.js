@@ -21,9 +21,13 @@ const VERIFY_TOKEN = 'sgs_webhook_2026';
 const pendingVideoReplies = {};
 
 
-// ── Serve broadcast page as static file ──────────────────────────────────────
+// ── Serve static pages ───────────────────────────────────────────────────────
 app.get('/broadcast', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'broadcast.html'));
+});
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 app.get('/', (req, res) => res.json({ status: 'ok', phone: WA_PHONE, pendingReplies: Object.keys(pendingVideoReplies).length }));
