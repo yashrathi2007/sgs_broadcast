@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGS Admin – Submissions</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{--red:#C0272D;--navy:#1A2B4A;--gold:#B8860B;--border:#D0D5DD;--text:#1C1C1E;--muted:#6B7280;--light:#F7F8FA;--green:#16A34A;--radius:8px}
+  body{font-family:'Inter',sans-serif;background:#EAEEF3;min-height:100vh;color:var(--text)}
+  /* Login */
+  .login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+  .login-card{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.12);overflow:hidden;width:100%;max-width:380px}
+  .login-header{background:var(--navy);padding:28px 28px 22px;text-align:center}
+  .login-logo{font-size:26px;font-weight:800;color:var(--red);letter-spacing:-1px}
+  .login-logo span{color:#fff}
+  .login-header p{color:#A0AEC0;font-size:12px;margin-top:4px}
+  .login-accent{height:4px;background:linear-gradient(90deg,var(--red),var(--gold))}
+  .login-body{padding:28px;display:flex;flex-direction:column;gap:16px}
+  .login-body label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px}
+  .login-body input{width:100%;border:1.5px solid var(--border);border-radius:var(--radius);padding:10px 13px;font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
+  .login-body input:focus{border-color:var(--red)}
+  .login-btn{width:100%;padding:12px;background:var(--red);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
+  .login-btn:hover{background:#A0201F}
+  .login-error{font-size:12px;color:var(--red);text-align:center;display:none}
+  /* Admin */
+  .admin-wrap{display:none;flex-direction:column;min-height:100vh}
+  .topbar{background:var(--navy);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .topbar-left{display:flex;align-items:center;gap:14px}
+  .topbar-logo{font-size:18px;font-weight:800;color:var(--red);letter-spacing:-1px}
+  .topbar-logo span{color:#fff}
+  .topbar-title{color:#fff;font-size:15px;font-weight:600}
+  .topbar-sub{color:#A0AEC0;font-size:11px}
+  .topbar-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .btn{padding:8px 14px;border-radius:var(--radius);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;border:none;transition:all .18s;display:flex;align-items:center;gap:6px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-refresh{background:#2D3748;color:#fff}
+  .btn-refresh:hover:not(:disabled){background:#1A202C}
+  .btn-export{background:var(--green);color:#fff}
+  .btn-export:hover:not(:disabled){background:#138034}
+  .btn-bulk{background:#0369A1;color:#fff}
+  .btn-bulk:hover{background:#0284C7}
+  .btn-new{background:#7C3AED;color:#fff}
+  .btn-new:hover{background:#6D28D9}
+  .btn-logout{background:transparent;color:#A0AEC0;border:1.5px solid #4A5568;font-size:12px;padding:7px 13px}
+  .btn-logout:hover{color:#fff;border-color:#fff}
+  .accent-bar{height:3px;background:linear-gradient(90deg,var(--red),var(--gold))}
+  .main{padding:28px;flex:1}
+  /* Stats */
+  .stats{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+  .stat-card{background:#fff;border-radius:10px;padding:16px 22px;flex:1;min-width:130px;box-shadow:0 2px 8px rgba(0,0,0,.06);border-left:4px solid var(--navy)}
+  .stat-card.red{border-left-color:var(--red)}.stat-card.green{border-left-color:var(--green)}.stat-card.gold{border-left-color:var(--gold)}
+  .stat-num{font-size:26px;font-weight:700;color:var(--navy);line-height:1}
+  .stat-card.red .stat-num{color:var(--red)}.stat-card.green .stat-num{color:var(--green)}.stat-card.gold .stat-num{color:var(--gold)}
+  .stat-label{font-size:11px;color:var(--muted);margin-top:4px;font-weight:500;text-transform:uppercase;letter-spacing:.6px}
+  /* Toolbar */
+  .toolbar{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;align-items:center}
+  .search-box{flex:1;min-width:200px;position:relative}
+  .search-box input{width:100%;border:1.5px solid var(--border);border-radius:var(--radius);padding:9px 13px 9px 36px;font-size:13px;font-family:inherit;outline:none;transition:border-color .2s}
+  .search-box input:focus{border-color:var(--red)}
+  .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none}
+  /* Table */
+  .table-wrap{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);overflow:hidden}
+  .table-scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead tr{background:var(--navy)}
+  thead th{color:#fff;padding:12px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap;cursor:pointer;user-select:none;transition:background .15s}
+  thead th:hover{background:#243554}
+  thead th.sort-asc::after{content:" ↑";opacity:.9}
+  thead th.sort-desc::after{content:" ↓";opacity:.9}
+  thead th:first-child,thead th:last-child{cursor:default}
+  thead th:first-child:hover,thead th:last-child:hover{background:transparent}
+  tbody tr{border-bottom:1px solid #F0F2F5;transition:background .12s}
+  tbody tr:hover{background:#F7F8FA}
+  tbody tr:last-child{border-bottom:none}
+  tbody td{padding:10px 14px;color:var(--text);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+  td.mobile-cell{font-family:monospace;font-size:13px}
+  td.date-cell{color:var(--muted);font-size:12px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:600;background:#DBEAFE;color:#1E40AF}
+  .empty-state{padding:60px 20px;text-align:center;color:var(--muted)}
+  .empty-icon{font-size:40px;margin-bottom:12px;opacity:.4}
+  .table-footer{padding:12px 16px;background:var(--light);border-top:1px solid var(--border);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+  .btn-del{background:none;border:none;color:#FC8181;cursor:pointer;font-size:14px;padding:4px 6px;border-radius:4px;transition:background .15s}
+  .btn-del:hover{background:#FEE2E2}
+  /* Loading */
+  .loading-row td{text-align:center;padding:40px;color:var(--muted)}
+  .spinner-sm{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* Confirm Modal */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center;padding:20px}
+  .modal-overlay.show{display:flex}
+  .modal{background:#fff;border-radius:10px;padding:28px;max-width:380px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+  .modal h3{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:10px}
+  .modal p{font-size:13px;color:var(--muted);margin-bottom:20px}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+  .btn-cancel{padding:9px 18px;background:var(--light);border:1.5px solid var(--border);color:var(--text);border-radius:var(--radius);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer}
+  .btn-confirm{padding:9px 18px;background:var(--red);color:#fff;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer}
+  /* Toast */
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.2);transform:translateY(60px);opacity:0;transition:all .3s;z-index:300}
+  .toast.show{transform:translateY(0);opacity:1}
+  .toast.success{border-left:4px solid var(--green)}
+  .toast.error{border-left:4px solid var(--red)}
+  /* Error banner */
+  .error-banner{background:#FEE2E2;border:1px solid #FECACA;color:#991B1B;border-radius:var(--radius);padding:10px 14px;font-size:13px;margin-bottom:16px;display:none}
+  /* Drawer */
+  .drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:flex-start;justify-content:flex-end}
+  .drawer-overlay.show{display:flex}
+  .drawer{background:#fff;width:500px;max-width:100vw;height:100vh;overflow-y:auto;display:flex;flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,.15)}
+  .drawer-header{background:var(--navy);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1}
+  .drawer-header-text h2{color:#fff;font-size:16px;font-weight:700;margin:0}
+  .drawer-header-text p{color:#A0AEC0;font-size:11px;margin-top:2px}
+  .drawer-close{background:none;border:none;color:#A0AEC0;font-size:22px;cursor:pointer;padding:2px 6px;border-radius:4px}
+  .drawer-close:hover{color:#fff;background:rgba(255,255,255,.1)}
+  .drawer-body{padding:22px;flex:1;display:flex;flex-direction:column;gap:0}
+  .d-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--red);border-bottom:1.5px solid #F0E8E8;padding-bottom:5px;margin:16px 0 10px}
+  .d-section:first-child{margin-top:0}
+  .d-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .d-grid.full{grid-template-columns:1fr}
+  .d-field{display:flex;flex-direction:column;gap:3px}
+  .d-field label{font-size:11px;font-weight:600;color:var(--muted)}
+  .d-field input,.d-field select,.d-field textarea{border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;color:var(--text);background:#fff;outline:none;transition:border-color .2s}
+  .d-field input:focus,.d-field select:focus,.d-field textarea:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(192,39,45,.08)}
+  .d-field textarea{resize:vertical;min-height:70px;width:100%}
+  .d-field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236B7280' d='M0 0l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer}
+  .source-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:12px;margin-bottom:14px}
+  .src-excel{background:#DBEAFE;color:#1E40AF}
+  .src-form{background:#EDE9FE;color:#5B21B6}
+  .src-new{background:#DCFCE7;color:#15803D}
+  .src-adding{background:#FEF3C7;color:#92400E}
+  .drawer-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:10px;position:sticky;bottom:0;background:#fff}
+  .btn-save{flex:1;padding:11px;background:var(--red);color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn-save:hover:not(:disabled){background:#A0201F}
+  .btn-save:disabled{opacity:.6;cursor:not-allowed}
+  .btn-cancel-drawer{padding:11px 18px;background:var(--light);border:1.5px solid var(--border);color:var(--text);border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  .btn-cancel-drawer:hover{background:#e2e6ea}
+  .edit-spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+  .d-error{background:#FEE2E2;border:1px solid #FECACA;color:#991B1B;border-radius:6px;padding:8px 12px;font-size:12px;display:none;margin-top:10px}
+  /* Bulk modal */
+  .bulk-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:20px}
+  .bulk-overlay.show{display:flex}
+  .bulk-modal{background:#fff;border-radius:12px;width:100%;max-width:520px;box-shadow:0 8px 40px rgba(0,0,0,.2);overflow:hidden}
+  .bulk-header{background:var(--navy);padding:20px 24px;display:flex;align-items:center;justify-content:space-between}
+  .bulk-header h2{color:#fff;font-size:16px;font-weight:700}
+  .bulk-header p{color:#A0AEC0;font-size:11px;margin-top:3px}
+  .bulk-body{padding:22px;display:flex;flex-direction:column;gap:14px}
+  .bulk-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;background:var(--light)}
+  .f-field{display:flex;flex-direction:column;gap:4px}
+  .f-field label{font-size:11.5px;font-weight:600;color:var(--muted)}
+  .f-field input,.f-field select{border:1.5px solid var(--border);border-radius:6px;padding:9px 12px;font-size:14px;font-family:inherit;color:var(--text);outline:none;transition:border-color .2s}
+  .f-field input:focus,.f-field select:focus{border-color:#0369A1;box-shadow:0 0 0 3px rgba(3,105,161,.08)}
+  .f-field select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236B7280' d='M0 0l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px;cursor:pointer}
+  .f-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .filter-btn{padding:8px 14px;border-radius:20px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--muted);transition:all .18s;white-space:nowrap}
+  .filter-btn:hover{border-color:var(--navy);color:var(--navy)}
+  .filter-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .filter-btn.active-green{background:#16A34A;color:#fff;border-color:#16A34A}
+  .filter-btn.active-blue{background:#1D4ED8;color:#fff;border-color:#1D4ED8}
+  @media(max-width:600px){.main{padding:16px}.topbar{padding:12px 16px}.d-grid,.f-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-logo">SGS <span>Admin</span></div>
+      <p>Personal Relationship Form — Admin Panel</p>
+    </div>
+    <div class="login-accent"></div>
+    <div class="login-body">
+      <div><label>Username</label><input type="text" id="loginUser" placeholder="admin" autocomplete="username"></div>
+      <div><label>Password</label><input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="login-error" id="loginError">Incorrect username or password.</div>
+      <button class="login-btn" onclick="doLogin()">Sign In</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div class="admin-wrap" id="adminWrap">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div><div class="topbar-logo">SGS <span>Admin</span></div><div class="topbar-sub">SGS Silk Mills Pvt. Ltd.</div></div>
+      <div><div class="topbar-title">Retailer Dashboard</div><div class="topbar-sub">Excel base + form submissions merged</div></div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-refresh" id="refreshBtn" onclick="loadAll()">↺ Refresh</button>
+      <button class="btn btn-bulk" onclick="openBulkModal()">⚡ Bulk Edit Wholesaler</button>
+      <button class="btn" style="background:#059669;color:#fff" onclick="openAddWholesaler()">+ Add Wholesaler</button>
+      <button class="btn btn-new"  onclick="openNewEntry()">+ New Entry</button>
+      <button class="btn btn-export" onclick="exportExcel()">↓ Export Excel</button>
+      <button class="btn" style="background:#25D366;color:#fff" onclick="window.location.href='sgs_broadcast.html'">💬 Broadcast</button>
+      <button class="btn btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+  <div class="accent-bar"></div>
+
+  <div class="main">
+    <div class="error-banner" id="errorBanner"></div>
+    <div class="stats">
+      <div class="stat-card red"><div class="stat-num" id="statTotal">—</div><div class="stat-label">Total Retailers</div></div>
+      <div class="stat-card green"><div class="stat-num" id="statToday">—</div><div class="stat-label">Submitted Today</div></div>
+      <div class="stat-card gold"><div class="stat-num" id="statBirth">—</div><div class="stat-label">Have Birthday</div></div>
+      <div class="stat-card"><div class="stat-num" id="statAnniv">—</div><div class="stat-label">Have Anniversary</div></div>
+    </div>
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Search by name, city, mobile, wholesaler…" oninput="setFilter('search')">
+      </div>
+      <button class="filter-btn active" id="btn-all"      onclick="setFilter('all')">All</button>
+      <button class="filter-btn"        id="btn-today"    onclick="setFilter('today')">📅 Today</button>
+      <button class="filter-btn"        id="btn-new"      onclick="setFilter('new')">✦ New Entries</button>
+      <button class="filter-btn"        id="btn-forms"    onclick="setFilter('forms')">↑ Form Submissions</button>
+    </div>
+    <div class="table-wrap">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr id="tableHeaders">
+              <th>#</th>
+              <th onclick="sortBy('_ts')">Submitted On</th>
+              <th onclick="sortBy('retailer')">Retailer Firm</th>
+              <th onclick="sortBy('wholesaler')">Wholesaler</th>
+              <th onclick="sortBy('retailer_name')">Retailer's Name</th>
+              <th onclick="sortBy('address')">Address</th>
+              <th onclick="sortBy('city')">City/Town</th>
+              <th onclick="sortBy('district')">District</th>
+              <th onclick="sortBy('pin_code')">Pin Code</th>
+              <th onclick="sortBy('state')">State</th>
+              <th onclick="sortBy('mobile')">Mobile</th>
+              <th onclick="sortBy('w_mobile')">W.Mobile</th>
+              <th onclick="sortBy('email')">Email</th>
+              <th onclick="sortBy('shop_space')">Shop Sqft</th>
+              <th onclick="sortBy('birthday')">Birthday</th>
+              <th onclick="sortBy('anniversary')">Anniversary</th>
+              <th onclick="sortBy('conference')">Conference</th>
+              <th onclick="sortBy('suggestion')">Suggestion</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr class="loading-row"><td colspan="19"><span class="spinner-sm"></span>Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-footer" id="tableFooter"><span></span><span></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Edit Wholesaler -->
+<div class="bulk-overlay" id="bulkOverlay" onclick="if(event.target===this)closeBulkModal()">
+  <div class="bulk-modal">
+    <div class="bulk-header">
+      <div><h2>⚡ Bulk Edit Wholesaler</h2><p>Changes apply to ALL retailers under the selected wholesaler</p></div>
+      <button onclick="closeBulkModal()" style="background:none;border:none;color:#A0AEC0;font-size:22px;cursor:pointer">✕</button>
+    </div>
+    <div style="height:3px;background:linear-gradient(90deg,#0369A1,#7C3AED)"></div>
+    <div class="bulk-body">
+      <div class="f-field">
+        <label>Select Wholesaler *</label>
+        <select id="bulk-wholesaler" onchange="onBulkSelect()">
+          <option value="">— Select a wholesaler —</option>
+        </select>
+      </div>
+      <div id="bulk-count-badge" style="display:none;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:9px 13px;font-size:13px;color:#1D4ED8;font-weight:500"></div>
+      <div id="bulk-fields" style="display:none">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px">Fields to update — leave blank to skip</div>
+        <div class="f-grid">
+          <div class="f-field"><label>District</label><input type="text" id="bulk-district" placeholder="e.g. Ludhiana"></div>
+          <div class="f-field">
+            <label>State</label>
+            <select id="bulk-state">
+              <option value="">— No change —</option>
+              <option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option><option>Bihar</option><option>Chhattisgarh</option><option>Goa</option><option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option><option>Jharkhand</option><option>Karnataka</option><option>Kerala</option><option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option><option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option><option>Odisha</option><option>Punjab</option><option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option><option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option><option>West Bengal</option><option>Andaman and Nicobar Islands</option><option>Chandigarh</option><option>Dadra and Nagar Haveli and Daman and Diu</option><option>Delhi</option><option>Jammu and Kashmir</option><option>Ladakh</option><option>Lakshadweep</option><option>Puducherry</option>
+            </select>
+          </div>
+        </div>
+        <div class="f-grid" style="margin-top:10px">
+          <div class="f-field"><label>W. Mobile</label><input type="tel" id="bulk-wmobile" placeholder="Wholesaler mobile" maxlength="15"></div>
+          <div class="f-field">
+            <label>Conference</label>
+            <select id="bulk-conference">
+              <option value="">— No change —</option>
+              <option>Kerala</option><option>Jaisalmer</option><option>Both</option><option>None</option><option>Kerala + Rameshwaram</option>
+            </select>
+          </div>
+        </div>
+        <div id="bulk-error" style="background:#FEE2E2;border:1px solid #FECACA;color:#991B1B;border-radius:6px;padding:8px 12px;font-size:12px;display:none;margin-top:10px"></div>
+      </div>
+    </div>
+    <div class="bulk-footer">
+      <button onclick="closeBulkModal()" style="padding:10px 20px;background:#fff;border:1.5px solid var(--border);color:var(--text);border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
+      <button id="bulk-save-btn" onclick="saveBulkEdit()" style="padding:10px 22px;background:#0369A1;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px" disabled>Apply to All</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Wholesaler Modal -->
+<div class="bulk-overlay" id="addWholesalerOverlay" onclick="if(event.target===this)closeAddWholesaler()">
+  <div class="bulk-modal">
+    <div class="bulk-header">
+      <div><h2>+ Add New Wholesaler</h2><p>Add a wholesaler to the master database</p></div>
+      <button onclick="closeAddWholesaler()" style="background:none;border:none;color:#A0AEC0;font-size:22px;cursor:pointer">✕</button>
+    </div>
+    <div style="height:3px;background:linear-gradient(90deg,#059669,#0369A1)"></div>
+    <div class="bulk-body">
+      <div class="f-field">
+        <label>Wholesaler Name *</label>
+        <input type="text" id="aw-name" placeholder="e.g. SHARMA TEXTILES" style="border:1.5px solid var(--border);border-radius:6px;padding:10px 13px;font-size:14px;font-family:inherit;outline:none;width:100%">
+      </div>
+      <div class="f-grid">
+        <div class="f-field">
+          <label>District</label>
+          <input type="text" id="aw-district" placeholder="e.g. Ludhiana" style="border:1.5px solid var(--border);border-radius:6px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none">
+        </div>
+        <div class="f-field">
+          <label>State</label>
+          <select id="aw-state" style="border:1.5px solid var(--border);border-radius:6px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;appearance:none;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236B7280' d='M0 0l5 5 5-5'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 12px center;padding-right:30px;cursor:pointer">
+            <option value="">— Select State —</option>
+            <option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option><option>Bihar</option><option>Chhattisgarh</option><option>Goa</option><option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option><option>Jharkhand</option><option>Karnataka</option><option>Kerala</option><option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option><option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option><option>Odisha</option><option>Punjab</option><option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option><option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option><option>West Bengal</option><option>Andaman and Nicobar Islands</option><option>Chandigarh</option><option>Dadra and Nagar Haveli and Daman and Diu</option><option>Delhi</option><option>Jammu and Kashmir</option><option>Ladakh</option><option>Lakshadweep</option><option>Puducherry</option>
+          </select>
+        </div>
+      </div>
+      <div class="f-grid">
+        <div class="f-field">
+          <label>Mobile</label>
+          <input type="tel" id="aw-mobile" placeholder="Wholesaler mobile" maxlength="15" style="border:1.5px solid var(--border);border-radius:6px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none">
+        </div>
+        <div class="f-field">
+          <label>Conference</label>
+          <select id="aw-conference" style="border:1.5px solid var(--border);border-radius:6px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;appearance:none;background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236B7280' d='M0 0l5 5 5-5'/%3E%3C/svg%3E&quot;);background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer">
+            <option value="">— Select —</option>
+            <option>Kerala</option><option>Jaisalmer</option><option>Both</option><option>None</option><option>Kerala + Rameshwaram</option>
+          </select>
+        </div>
+      </div>
+      <div id="aw-error" style="background:#FEE2E2;border:1px solid #FECACA;color:#991B1B;border-radius:6px;padding:8px 12px;font-size:12px;display:none"></div>
+    </div>
+    <div class="bulk-footer">
+      <button onclick="closeAddWholesaler()" style="padding:10px 20px;background:#fff;border:1.5px solid var(--border);color:var(--text);border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancel</button>
+      <button id="aw-save-btn" onclick="saveNewWholesaler()" style="padding:10px 22px;background:#059669;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px">Add Wholesaler</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit / Add Drawer -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="if(event.target===this)closeDrawer()">
+  <div class="drawer">
+    <div class="drawer-header">
+      <div class="drawer-header-text">
+        <h2 id="drawerTitle">Edit Retailer</h2>
+        <p id="drawerSubtitle"></p>
+      </div>
+      <button class="drawer-close" onclick="closeDrawer()">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div id="drawerBadge"></div>
+      <div class="d-section">Firm Details</div>
+      <div class="d-grid full"><div class="d-field"><label>Retailer Firm Name *</label><input type="text" id="ed-firmName" placeholder="Firm name"></div></div>
+      <div class="d-grid" style="margin-top:10px">
+        <div class="d-field">
+          <label>Wholesaler</label>
+          <select id="ed-wholesalerSel" onchange="onDrawerWholesalerChange()">
+            <option value="">— Select —</option>
+          </select>
+          <div id="ed-newWWrap" style="display:none;margin-top:7px">
+            <input type="text" id="ed-newWName" placeholder="New wholesaler name" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 10px;font-size:13px;font-family:inherit;width:100%;outline:none">
+            <span style="font-size:10.5px;color:var(--muted);display:block;margin-top:3px">Saved as new wholesaler</span>
+          </div>
+        </div>
+        <div class="d-field"><label>Retailer's Name (Owner)</label><input type="text" id="ed-retailerName" placeholder="Owner name"></div>
+      </div>
+      <div class="d-grid" style="margin-top:10px">
+        <div class="d-field"><label>Address</label><input type="text" id="ed-address" placeholder="Street / Locality"></div>
+        <div class="d-field"><label>City / Town</label><input type="text" id="ed-city" placeholder="City"></div>
+      </div>
+      <div class="d-grid" style="margin-top:10px">
+        <div class="d-field"><label>District</label><input type="text" id="ed-district" placeholder="District"></div>
+        <div class="d-field"><label>Pin Code</label><input type="text" id="ed-pinCode" placeholder="000000" maxlength="6"></div>
+      </div>
+      <div class="d-grid" style="margin-top:10px">
+        <div class="d-field">
+          <label>State</label>
+          <select id="ed-state">
+            <option value="">— Select —</option>
+            <option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option><option>Bihar</option><option>Chhattisgarh</option><option>Goa</option><option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option><option>Jharkhand</option><option>Karnataka</option><option>Kerala</option><option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option><option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option><option>Odisha</option><option>Punjab</option><option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option><option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option><option>West Bengal</option><option>Andaman and Nicobar Islands</option><option>Chandigarh</option><option>Dadra and Nagar Haveli and Daman and Diu</option><option>Delhi</option><option>Jammu and Kashmir</option><option>Ladakh</option><option>Lakshadweep</option><option>Puducherry</option>
+          </select>
+        </div>
+        <div class="d-field"><label>Email</label><input type="email" id="ed-email" placeholder="retailer@gmail.com"></div>
+      </div>
+      <div class="d-section">Contact &amp; Shop</div>
+      <div class="d-grid">
+        <div class="d-field"><label>Mobile</label><input type="tel" id="ed-mobile" placeholder="9999999999" maxlength="15"></div>
+        <div class="d-field"><label>Shop Space (sq.ft.)</label><input type="number" id="ed-shopSpace" placeholder="5000" min="0"></div>
+      </div>
+      <div class="d-section">Important Dates</div>
+      <div class="d-grid">
+        <div class="d-field"><label>Date of Birth</label><input type="date" id="ed-dob"></div>
+        <div class="d-field"><label>Marriage Anniversary</label><input type="date" id="ed-anniversary"></div>
+      </div>
+      <div class="d-section">Suggestion</div>
+      <div class="d-grid full"><div class="d-field"><label>Suggestion / Feedback</label><textarea id="ed-suggestion" placeholder="Any suggestions…" maxlength="500"></textarea></div></div>
+      <div class="d-error" id="d-error"></div>
+    </div>
+    <div class="drawer-footer">
+      <button class="btn-cancel-drawer" onclick="closeDrawer()">Cancel</button>
+      <button class="btn-save" id="btnSave" onclick="saveEntry()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">Confirm</h3>
+    <p id="modalMsg"></p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm" id="modalConfirmBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://oapgtrotlfgrjefanyss.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hcGd0cm90bGZncmplZmFueXNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMzk5NzIsImV4cCI6MjA5NjkxNTk3Mn0.thvxozgAtmhHjUGIufdqf1naYB8mOR-0sY09eGTyOTk';
+const ADMIN_USER = 'sgsadmin';
+const ADMIN_PASS = 'SGS@2024';
+
+let masterData = [], formsData = [], mergedData = [], filteredData = [];
+let editIndex = -1, isNewMode = false;
+let activeFilter = 'all';
+let sortCol = 'wholesaler', sortDir = 1;  // default: wholesaler asc
+
+const H = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if (u === ADMIN_USER && p === ADMIN_PASS) {
+    document.getElementById('loginWrap').style.display = 'none';
+    document.getElementById('adminWrap').style.display = 'flex';
+    loadAll();
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('loginPass').value = '';
+  }
+}
+function logout() {
+  document.getElementById('adminWrap').style.display = 'none';
+  document.getElementById('loginWrap').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  masterData = []; formsData = []; mergedData = [];
+}
+
+// ── Fetch all rows (paginated) ─────────────────────────────────────────────
+async function fetchAll(table, order) {
+  const PAGE = 1000;
+  let rows = [], from = 0;
+  while (true) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*&order=${order}`, {
+      headers: { ...H, 'Range': `${from}-${from + PAGE - 1}`, 'Range-Unit': 'items', 'Prefer': 'count=none' }
+    });
+    if (!res.ok) throw new Error(`${table}: HTTP ${res.status}`);
+    const batch = await res.json();
+    rows = rows.concat(batch);
+    if (batch.length < PAGE) break;
+    from += PAGE;
+  }
+  return rows;
+}
+
+// ── Load & merge ───────────────────────────────────────────────────────────
+async function loadAll() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true; btn.textContent = '↺ Loading…';
+  document.getElementById('errorBanner').style.display = 'none';
+  document.getElementById('tableBody').innerHTML = '<tr class="loading-row"><td colspan="19"><span class="spinner-sm"></span>Loading data…</td></tr>';
+  try {
+    [masterData, formsData] = await Promise.all([
+      fetchAll('retailer_master', 'wholesaler.asc,retailer.asc'),
+      fetchAll('retailer_forms',  'created_at.desc')
+    ]);
+    buildMerged(); updateStats();
+    // Mark default sort header
+    document.querySelectorAll('#tableHeaders th[onclick]').forEach(th => {
+      if (th.getAttribute('onclick') === "sortBy('wholesaler')") th.classList.add('sort-asc');
+    });
+    renderTable();
+  } catch(e) {
+    const b = document.getElementById('errorBanner');
+    b.textContent = 'Could not load: ' + e.message; b.style.display = 'block';
+    document.getElementById('tableBody').innerHTML = '<tr class="loading-row"><td colspan="19">Failed. Click Refresh.</td></tr>';
+  } finally { btn.disabled = false; btn.textContent = '↺ Refresh'; }
+}
+
+// ── Build wholesalerMap — includes wholesalers from forms not in master ───
+function getWholesalerMap() {
+  const map = {};
+  masterData.forEach(m => {
+    if (!m.wholesaler) return;
+    if (!map[m.wholesaler]) map[m.wholesaler] = [];
+    map[m.wholesaler].push(m);
+  });
+  // Also include wholesalers that came in via form submissions
+  formsData.forEach(f => {
+    const w = f.wholesaler_firm;
+    if (!w) return;
+    if (!map[w]) map[w] = [];   // new wholesaler — empty master rows array
+  });
+  return map;
+}
+
+// ── Merge master + forms ───────────────────────────────────────────────────
+function buildMerged() {
+  const formsMap = {};
+  formsData.forEach(f => {
+    const key = `${(f.firm_name||'').trim().toUpperCase()}|||${(f.wholesaler_firm||'').trim().toUpperCase()}`;
+    if (!formsMap[key] || f.created_at > formsMap[key].created_at) formsMap[key] = f;
+  });
+  mergedData = masterData.map(m => {
+    const key = `${m.retailer.trim().toUpperCase()}|||${m.wholesaler.trim().toUpperCase()}`;
+    const f = formsMap[key];
+    if (f) return { _src:'form', _ts:f.created_at, _fid:f.id,
+      retailer:f.firm_name||m.retailer, wholesaler:f.wholesaler_firm||m.wholesaler,
+      district:f.district||m.district||'', state:f.state||m.state||'',
+      mobile:f.mobile||m.mobile||'', birthday:f.date_of_birth||m.birthday||'',
+      anniversary:f.anniversary||m.anniversary||'', retailer_name:f.retailer_name||'',
+      address:f.address||'', city:f.city||'', pin_code:f.pin_code||'', email:f.email||'',
+      shop_space:f.shop_space_sqft||'', suggestion:f.suggestion||'',
+      w_mobile:m.w_mobile||'',       // always from master
+      conference:m.conference||'' }; // always from master
+    return { _src:'master', _ts:null, _fid:null,
+      retailer:m.retailer, wholesaler:m.wholesaler, district:m.district||'', state:m.state||'',
+      mobile:m.mobile||'', birthday:m.birthday||'', anniversary:m.anniversary||'',
+      retailer_name:'', address:'', city:'', pin_code:'', email:'', shop_space:'', suggestion:'',
+      w_mobile:m.w_mobile||'', conference:m.conference||'' };
+  });
+  const masterKeys = new Set(masterData.map(m => `${m.retailer.trim().toUpperCase()}|||${m.wholesaler.trim().toUpperCase()}`));
+  const newEntries = [];
+  formsData.forEach(f => {
+    const key = `${(f.firm_name||'').trim().toUpperCase()}|||${(f.wholesaler_firm||'').trim().toUpperCase()}`;
+    if (!masterKeys.has(key)) {
+      // Try to inherit wholesaler-level data (w_mobile, conference) from master
+      const wName = (f.wholesaler_firm||'').toUpperCase();
+      const masterWholesaler = masterData.find(m => (m.wholesaler||'').toUpperCase() === wName);
+      newEntries.push({ _src:'new', _ts:f.created_at, _fid:f.id,
+        retailer:f.firm_name||'', wholesaler:f.wholesaler_firm||'',
+        district:f.district||masterWholesaler?.district||'',
+        state:f.state||masterWholesaler?.state||'',
+        mobile:f.mobile||'', birthday:f.date_of_birth||'',
+        anniversary:f.anniversary||'', retailer_name:f.retailer_name||'',
+        address:f.address||'', city:f.city||'', pin_code:f.pin_code||'', email:f.email||'',
+        shop_space:f.shop_space_sqft||'', suggestion:f.suggestion||'',
+        w_mobile:masterWholesaler?.w_mobile||'',
+        conference:masterWholesaler?.conference||'' });
+    }
+  });
+  // Sort new entries by wholesaler then retailer and append
+  newEntries.sort((a,b) => {
+    const wCmp = (a.wholesaler||'').localeCompare(b.wholesaler||'');
+    return wCmp !== 0 ? wCmp : (a.retailer||'').localeCompare(b.retailer||'');
+  });
+  mergedData.push(...newEntries);
+}
+
+function updateStats() {
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('statTotal').textContent = mergedData.length;
+  document.getElementById('statToday').textContent = mergedData.filter(d => (d._ts||'').startsWith(today)).length;
+  document.getElementById('statBirth').textContent = mergedData.filter(d => d.birthday).length;
+  document.getElementById('statAnniv').textContent = mergedData.filter(d => d.anniversary).length;
+}
+
+function fmtDate(v) {
+  if (!v) return '—';
+  if (v.includes('-') && v.length >= 10) { const [y,m,d]=v.slice(0,10).split('-'); return `${d}/${m}/${y}`; }
+  return v;
+}
+
+// ── Render table ───────────────────────────────────────────────────────────
+function sortBy(col) {
+  if (sortCol === col) {
+    sortDir = sortDir === 1 ? -1 : 1;  // toggle direction
+  } else {
+    sortCol = col;
+    sortDir = 1;
+  }
+  // Update header classes
+  document.querySelectorAll('#tableHeaders th').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+  });
+  // Find the right th by onclick attribute
+  const ths = document.querySelectorAll('#tableHeaders th[onclick]');
+  ths.forEach(th => {
+    if (th.getAttribute('onclick') === `sortBy('${col}')`) {
+      th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+    }
+  });
+  renderTable();
+}
+
+function setFilter(f) {
+  if (f === 'search') {
+    // Search box typed — keep current filter but apply search on top
+    renderTable(); return;
+  }
+  activeFilter = f;
+  // Clear search when switching filter buttons
+  if (f !== 'search') document.getElementById('searchInput').value = '';
+  // Update button states
+  ['all','today','new','forms'].forEach(id => {
+    const btn = document.getElementById('btn-' + id);
+    btn.className = 'filter-btn';
+    if (id === f) {
+      if (id === 'today')  btn.classList.add('active-green');
+      else if (id === 'new' || id === 'forms') btn.classList.add('active-blue');
+      else btn.classList.add('active');
+    }
+  });
+  renderTable();
+}
+
+function renderTable() {
+  const q     = document.getElementById('searchInput').value.toLowerCase();
+  const today = new Date().toISOString().slice(0,10);
+
+  // Apply active filter first
+  let base = mergedData;
+  if (activeFilter === 'today')  base = mergedData.filter(d => (d._ts||'').startsWith(today));
+  if (activeFilter === 'new')    base = mergedData.filter(d => d._src === 'new');
+  if (activeFilter === 'forms')  base = mergedData.filter(d => d._src === 'form' || d._src === 'new');
+
+  // Sort by selected column (default: wholesaler asc, then retailer asc)
+  base = [...base].sort((a, b) => {
+    let aVal = a[sortCol] ?? '';
+    let bVal = b[sortCol] ?? '';
+
+    // Numeric sort for shop_space
+    if (sortCol === 'shop_space') {
+      return (Number(aVal)||0 - Number(bVal)||0) * sortDir;
+    }
+    // Date sort for submitted on
+    if (sortCol === '_ts') {
+      return ((aVal||'') < (bVal||'') ? -1 : (aVal||'') > (bVal||'') ? 1 : 0) * sortDir;
+    }
+    // Default: string sort, secondary sort by wholesaler then retailer
+    const cmp = aVal.toString().localeCompare(bVal.toString());
+    if (cmp !== 0) return cmp * sortDir;
+    // Secondary: wholesaler → retailer
+    if (sortCol !== 'wholesaler') {
+      const wCmp = (a.wholesaler||'').localeCompare(b.wholesaler||'');
+      if (wCmp !== 0) return wCmp;
+    }
+    return (a.retailer||'').localeCompare(b.retailer||'');
+  });
+
+  // Then search on top
+  filteredData = q ? base.filter(d => Object.values(d).some(v => (v||'').toString().toLowerCase().includes(q))) : base;
+  const tbody = document.getElementById('tableBody');
+  if (filteredData.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="19"><div class="empty-state"><div class="empty-icon">📋</div><p>${mergedData.length===0?'No data. Run the SQL setup first.':'No results.'}</p></div></td></tr>`;
+    document.getElementById('tableFooter').innerHTML = ''; return;
+  }
+  const fCount = mergedData.filter(d => d._src !== 'master').length;
+  tbody.innerHTML = filteredData.map((d, i) => {
+    const bg   = d._src==='new'?'background:#F0FDF4':d._src==='form'?'background:#EFF6FF':'';
+    const badge= d._src==='new'
+      ? `<span class="badge" style="background:#16A34A;color:#fff" title="New from form">✦${i+1}</span>`
+      : d._src==='form'
+      ? `<span class="badge" style="background:#1D4ED8;color:#fff" title="Form updated">↑${i+1}</span>`
+      : `<span class="badge">${i+1}</span>`;
+    const ts = d._ts ? new Date(d._ts).toLocaleString('en-IN') : '—';
+    return `<tr style="${bg}">
+      <td>${badge}</td>
+      <td class="date-cell" style="font-size:11px">${ts}</td>
+      <td title="${d.retailer}">${d.retailer==='__WHOLESALER_PLACEHOLDER__'?'<em style="color:var(--muted)">— No retailers yet —</em>':d.retailer||'—'}</td>
+      <td>${d.wholesaler||'—'}</td>
+      <td>${d.retailer_name||'—'}</td>
+      <td title="${d.address||''}" style="max-width:140px">${d.address||'—'}</td>
+      <td>${d.city||'—'}</td>
+      <td>${d.district||'—'}</td>
+      <td>${d.pin_code||'—'}</td>
+      <td>${d.state||'—'}</td>
+      <td class="mobile-cell">${d.mobile||'—'}</td>
+      <td class="mobile-cell">${d.w_mobile||'—'}</td>
+      <td title="${d.email||''}" style="max-width:140px">${d.email||'—'}</td>
+      <td>${d.shop_space||'—'}</td>
+      <td class="date-cell">${fmtDate(d.birthday)}</td>
+      <td class="date-cell">${fmtDate(d.anniversary)}</td>
+      <td>${d.conference||'—'}</td>
+      <td title="${d.suggestion||''}" style="max-width:160px;font-size:12px;color:var(--muted)">${d.suggestion||'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn-del" style="color:#6B7280" title="Edit" onclick="openEdit(${i})">✎</button>
+        ${d._fid?`<button class="btn-del" title="Delete" onclick="confirmDelete('${d._fid}','${(d.retailer||'').replace(/'/g,"\\'")}')">✕</button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+  const filterLabel = activeFilter==='today'?"Today's entries":activeFilter==='new'?'New entries':activeFilter==='forms'?'Form submissions':'All retailers';
+  document.getElementById('tableFooter').innerHTML =
+    `<span>${filterLabel}: <strong>${filteredData.length}</strong>${q?' matches':''}  &nbsp;·&nbsp; Total: ${mergedData.length} &nbsp;·&nbsp; <span style="color:#1D4ED8">↑${formsData.length} form submissions</span></span>
+     <span style="color:var(--muted);font-size:11px">Excel base + live form data</span>`;
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────
+function confirmDelete(id, name) {
+  document.getElementById('modalTitle').textContent = 'Delete Entry';
+  document.getElementById('modalMsg').textContent = `Remove form entry for "${name}"? Excel base record remains.`;
+  document.getElementById('modalConfirmBtn').onclick = () => { deleteEntry(id); closeModal(); };
+  document.getElementById('modalOverlay').classList.add('show');
+}
+async function deleteEntry(id) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/retailer_forms?id=eq.${id}`, { method:'DELETE', headers:H });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    formsData = formsData.filter(d => d.id !== id);
+    buildMerged(); updateStats(); renderTable();
+    showToast('Deleted.', 'error');
+  } catch(e) { showToast('Delete failed: '+e.message,'error'); }
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────
+function exportExcel() {
+  if (!mergedData.length) { showToast('No data.','error'); return; }
+  const rows = mergedData.map(d => ({
+    'Source': d._src==='form'?'Form Updated':d._src==='new'?'New from Form':'Excel Only',
+    'Submitted On': d._ts?new Date(d._ts).toLocaleString('en-IN'):'',
+    'Retailer Firm': d.retailer||'', "Wholesaler's Firm": d.wholesaler||'',
+    "Retailer's Name": d.retailer_name||'', 'Address': d.address||'',
+    'City/Town': d.city||'', 'District': d.district||'', 'Pin Code': d.pin_code||'',
+    'State': d.state||'', 'Mobile': d.mobile||'', 'W.Mobile': d.w_mobile||'',
+    'Email': d.email||'', 'Shop Space': d.shop_space||'',
+    'Birthday': fmtDate(d.birthday), 'Anniversary': fmtDate(d.anniversary),
+    'Conference': d.conference||'', 'Suggestion': d.suggestion||''
+  }));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:20},{wch:28},{wch:26},{wch:22},{wch:24},{wch:14},{wch:14},{wch:10},{wch:16},{wch:14},{wch:14},{wch:24},{wch:10},{wch:14},{wch:14},{wch:16},{wch:36}];
+  XLSX.utils.book_append_sheet(wb, ws, 'All Retailers');
+  XLSX.writeFile(wb, `SGS_Retailers_${new Date().toISOString().slice(0,10).replace(/-/g,'')}.xlsx`);
+  showToast(`Exported ${rows.length} rows!`);
+}
+
+// ── Drawer helpers ─────────────────────────────────────────────────────────
+function populateWholesalerDropdown(selId, currentVal) {
+  const sel = document.getElementById(selId);
+  const wMap = getWholesalerMap();
+  sel.innerHTML = '<option value="">— Select —</option>';
+  Object.keys(wMap).sort().forEach(w => {
+    const o = document.createElement('option'); o.value = w; o.textContent = w; sel.appendChild(o);
+  });
+  const sep = document.createElement('option'); sep.disabled = true; sep.textContent = '──────────────'; sel.appendChild(sep);
+  const add = document.createElement('option'); add.value = '__new__'; add.textContent = '+ Add new wholesaler'; sel.appendChild(add);
+  if (currentVal) sel.value = currentVal;
+}
+
+function onDrawerWholesalerChange() {
+  const isNew = document.getElementById('ed-wholesalerSel').value === '__new__';
+  document.getElementById('ed-newWWrap').style.display = isNew ? 'block' : 'none';
+  if (isNew) document.getElementById('ed-newWName').focus();
+}
+
+function setVal(id, v)   { const e = document.getElementById(id); if(e) e.value = v||''; }
+function setSel(id, v)   {
+  if (!v) return;
+  const s = document.getElementById(id); if (!s) return;
+  for (let i=0;i<s.options.length;i++) if (s.options[i].text.toLowerCase()===v.toLowerCase()) { s.selectedIndex=i; return; }
+}
+function setDate(id, v)  {
+  const e = document.getElementById(id); if (!e||!v) return;
+  const m = v.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  e.value = m ? `${m[3]}-${m[2]}-${m[1]}` : v.length>=10 ? v.slice(0,10) : '';
+}
+
+// ── Edit existing entry ────────────────────────────────────────────────────
+function openEdit(idx) {
+  const d = filteredData[idx];
+  if (!d) return;
+  editIndex = idx; isNewMode = false;
+
+  populateWholesalerDropdown('ed-wholesalerSel', d.wholesaler);
+  document.getElementById('ed-newWWrap').style.display = 'none';
+  document.getElementById('ed-newWName').value = '';
+
+  const badgeMap = { form:'src-form', new:'src-new', master:'src-excel' };
+  const lblMap   = { form:'Updated by form', new:'New from form', master:'From Excel' };
+  document.getElementById('drawerBadge').innerHTML = `<span class="source-badge ${badgeMap[d._src]||'src-excel'}">${lblMap[d._src]||'Excel'}</span>`;
+
+  setVal('ed-firmName', d.retailer); setVal('ed-retailerName', d.retailer_name);
+  setVal('ed-address', d.address);   setVal('ed-city', d.city||d.district);
+  setVal('ed-district', d.district); setVal('ed-pinCode', d.pin_code);
+  setVal('ed-email', d.email);       setVal('ed-mobile', d.mobile);
+  setVal('ed-shopSpace', d.shop_space); setVal('ed-suggestion', d.suggestion);
+  setSel('ed-state', d.state);
+  setDate('ed-dob', d.birthday);     setDate('ed-anniversary', d.anniversary);
+
+  document.getElementById('drawerTitle').textContent    = d.retailer || 'Edit Retailer';
+  document.getElementById('drawerSubtitle').textContent = d.wholesaler || '';
+  document.getElementById('d-error').style.display      = 'none';
+  document.getElementById('btnSave').disabled           = false;
+  document.getElementById('btnSave').innerHTML          = 'Save Changes';
+  document.getElementById('drawerOverlay').classList.add('show');
+}
+
+// ── Add new entry ──────────────────────────────────────────────────────────
+function openNewEntry() {
+  editIndex = -1; isNewMode = true;
+  populateWholesalerDropdown('ed-wholesalerSel', '');
+  document.getElementById('ed-newWWrap').style.display = 'none';
+  document.getElementById('ed-newWName').value = '';
+  document.getElementById('drawerBadge').innerHTML = '<span class="source-badge src-adding">✦ New Entry</span>';
+  ['ed-firmName','ed-retailerName','ed-address','ed-city','ed-district','ed-pinCode',
+   'ed-email','ed-mobile','ed-shopSpace','ed-suggestion'].forEach(id => setVal(id,''));
+  document.getElementById('ed-state').value = '';
+  document.getElementById('ed-dob').value = '';
+  document.getElementById('ed-anniversary').value = '';
+  document.getElementById('drawerTitle').textContent    = 'Add New Entry';
+  document.getElementById('drawerSubtitle').textContent = 'Fill in the retailer details';
+  document.getElementById('d-error').style.display      = 'none';
+  document.getElementById('btnSave').disabled           = false;
+  document.getElementById('btnSave').innerHTML          = 'Add Entry';
+  document.getElementById('drawerOverlay').classList.add('show');
+}
+
+function closeDrawer() {
+  document.getElementById('drawerOverlay').classList.remove('show');
+  editIndex = -1; isNewMode = false;
+}
+
+// ── Save entry (edit or new) ───────────────────────────────────────────────
+async function saveEntry() {
+  const btn   = document.getElementById('btnSave');
+  const errEl = document.getElementById('d-error');
+  const g = id => document.getElementById(id)?.value?.trim() || null;
+
+  const wholesalerVal = document.getElementById('ed-wholesalerSel').value === '__new__'
+    ? (document.getElementById('ed-newWName').value.trim() || null)
+    : (document.getElementById('ed-wholesalerSel').value || null);
+
+  const payload = {
+    firm_name:       g('ed-firmName'),
+    wholesaler_firm: wholesalerVal,
+    retailer_name:   g('ed-retailerName'),
+    address:         g('ed-address'),
+    city:            g('ed-city'),
+    district:        g('ed-district'),
+    pin_code:        g('ed-pinCode'),
+    state:           g('ed-state'),
+    email:           g('ed-email'),
+    mobile:          g('ed-mobile'),
+    shop_space_sqft: g('ed-shopSpace') ? Number(g('ed-shopSpace')) : null,
+    date_of_birth:   g('ed-dob'),
+    anniversary:     g('ed-anniversary'),
+    suggestion:      g('ed-suggestion'),
+  };
+
+  if (!payload.firm_name) {
+    errEl.textContent = 'Retailer Firm Name is required.';
+    errEl.style.display = 'block'; return;
+  }
+
+  btn.disabled = true; btn.innerHTML = '<div class="edit-spinner"></div> Saving…';
+  errEl.style.display = 'none';
+
+  // Remove null fields so we don't overwrite good data with nulls
+  Object.keys(payload).forEach(k => { if (payload[k] === null) delete payload[k]; });
+
+  try {
+    const d = !isNewMode && editIndex >= 0 ? filteredData[editIndex] : null;
+    if (d && d._fid) {
+      // PATCH existing
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/retailer_forms?id=eq.${d._fid}`, {
+        method:'PATCH', headers:{...H,'Prefer':'return=minimal'}, body:JSON.stringify(payload)
+      });
+      if (!res.ok) { const e=await res.json().catch(()=>{}); throw new Error(e?.message||`HTTP ${res.status}`); }
+      const fi = formsData.findIndex(f => f.id === d._fid);
+      if (fi !== -1) Object.assign(formsData[fi], payload);
+    } else {
+      // INSERT new
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/retailer_forms`, {
+        method:'POST', headers:{...H,'Prefer':'return=representation'},
+        body:JSON.stringify({...payload, form_date: new Date().toISOString().slice(0,10)})
+      });
+      if (!res.ok) { const e=await res.json().catch(()=>{}); throw new Error(e?.message||`HTTP ${res.status}`); }
+      const created = await res.json();
+      if (created?.[0]) formsData.push(created[0]);
+    }
+    buildMerged(); updateStats(); renderTable();
+    closeDrawer();
+    showToast(isNewMode ? 'New entry added!' : 'Saved!');
+  } catch(e) {
+    errEl.textContent = 'Save failed: ' + e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = isNewMode ? 'Add Entry' : 'Save Changes';
+  }
+}
+
+// ── Add New Wholesaler ─────────────────────────────────────────────────────
+function openAddWholesaler() {
+  ['aw-name','aw-district','aw-mobile'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('aw-state').value = '';
+  document.getElementById('aw-conference').value = '';
+  document.getElementById('aw-error').style.display = 'none';
+  document.getElementById('aw-save-btn').disabled = false;
+  document.getElementById('aw-save-btn').innerHTML = 'Add Wholesaler';
+  document.getElementById('addWholesalerOverlay').classList.add('show');
+  setTimeout(() => document.getElementById('aw-name').focus(), 100);
+}
+
+function closeAddWholesaler() {
+  document.getElementById('addWholesalerOverlay').classList.remove('show');
+}
+
+async function saveNewWholesaler() {
+  const btn   = document.getElementById('aw-save-btn');
+  const errEl = document.getElementById('aw-error');
+  const name  = document.getElementById('aw-name').value.trim().toUpperCase();
+
+  if (!name) {
+    errEl.textContent = 'Wholesaler name is required.';
+    errEl.style.display = 'block'; return;
+  }
+
+  // Check if already exists
+  const exists = masterData.some(m => (m.wholesaler||'').toUpperCase() === name);
+  if (exists) {
+    errEl.textContent = `"${name}" already exists in the master database.`;
+    errEl.style.display = 'block'; return;
+  }
+
+  btn.disabled = true; btn.innerHTML = '<div class="edit-spinner"></div> Adding…';
+  errEl.style.display = 'none';
+
+  const payload = {
+    retailer:    '__WHOLESALER_PLACEHOLDER__',  // placeholder retailer
+    wholesaler:  name,
+    district:    document.getElementById('aw-district').value.trim() || null,
+    state:       document.getElementById('aw-state').value || null,
+    w_mobile:    document.getElementById('aw-mobile').value.trim() || null,
+    conference:  document.getElementById('aw-conference').value || null,
+  };
+  // Remove nulls
+  Object.keys(payload).forEach(k => { if (payload[k] === null) delete payload[k]; });
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/retailer_master`, {
+      method: 'POST',
+      headers: { ...H, 'Prefer': 'return=representation' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.message||`HTTP ${res.status}`); }
+    const created = await res.json();
+    if (created?.[0]) masterData.push(created[0]);
+    buildMerged(); updateStats(); renderTable();
+    closeAddWholesaler();
+    showToast(`Wholesaler "${name}" added! You can now add retailers under them.`);
+  } catch(e) {
+    errEl.textContent = 'Failed: ' + e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = 'Add Wholesaler';
+  }
+}
+
+// ── Bulk Edit Wholesaler ───────────────────────────────────────────────────
+function openBulkModal() {
+  const sel = document.getElementById('bulk-wholesaler');
+  const wMap = getWholesalerMap();
+  sel.innerHTML = '<option value="">— Select a wholesaler —</option>';
+  Object.keys(wMap).sort().forEach(w => {
+    // Count from mergedData (true total) not just masterData
+    const totalCount = mergedData.filter(d => (d.wholesaler||'').toUpperCase() === w.toUpperCase()).length;
+    const o = document.createElement('option'); o.value = w; o.textContent = `${w} (${totalCount})`; sel.appendChild(o);
+  });
+  sel.value = '';
+  document.getElementById('bulk-count-badge').style.display = 'none';
+  document.getElementById('bulk-fields').style.display = 'none';
+  document.getElementById('bulk-error').style.display = 'none';
+  document.getElementById('bulk-save-btn').disabled = true;
+  document.getElementById('bulk-save-btn').innerHTML = 'Apply to All';
+  ['bulk-district','bulk-wmobile'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('bulk-state').value = '';
+  document.getElementById('bulk-conference').value = '';
+  document.getElementById('bulkOverlay').classList.add('show');
+}
+
+function closeBulkModal() { document.getElementById('bulkOverlay').classList.remove('show'); }
+
+function onBulkSelect() {
+  const w = document.getElementById('bulk-wholesaler').value;
+  const badge  = document.getElementById('bulk-count-badge');
+  const fields = document.getElementById('bulk-fields');
+  const saveBtn = document.getElementById('bulk-save-btn');
+  if (!w) { badge.style.display='none'; fields.style.display='none'; saveBtn.disabled=true; return; }
+
+  const count = mergedData.filter(d => (d.wholesaler||'').toUpperCase() === w.toUpperCase()).length;
+  badge.textContent = `⚡ ${count} retailer${count!==1?'s':''} will be updated`;
+  badge.style.display = 'block';
+  fields.style.display = 'block';
+  saveBtn.disabled = false;
+
+  // Pre-fill current values
+  const sample = mergedData.find(d => (d.wholesaler||'').toUpperCase() === w.toUpperCase());
+  if (sample) {
+    document.getElementById('bulk-district').value = sample.district || '';
+    document.getElementById('bulk-wmobile').value  = sample.w_mobile || '';
+    setSel('bulk-state', sample.state);
+    document.getElementById('bulk-conference').value = sample.conference || '';
+  }
+}
+
+async function saveBulkEdit() {
+  const w = document.getElementById('bulk-wholesaler').value;
+  if (!w) return;
+  const btn   = document.getElementById('bulk-save-btn');
+  const errEl = document.getElementById('bulk-error');
+  btn.disabled = true; btn.innerHTML = '<div class="edit-spinner"></div> Updating…';
+  errEl.style.display = 'none';
+
+  const district   = document.getElementById('bulk-district').value.trim();
+  const state      = document.getElementById('bulk-state').value;
+  const wmobile    = document.getElementById('bulk-wmobile').value.trim();
+  const conference = document.getElementById('bulk-conference').value;
+
+  const masterPay = {};
+  if (district)   masterPay.district   = district;
+  if (state)      masterPay.state      = state;
+  if (wmobile)    masterPay.w_mobile   = wmobile;
+  if (conference) masterPay.conference = conference;
+
+  if (!Object.keys(masterPay).length) {
+    errEl.textContent = 'Fill in at least one field.';
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.innerHTML = 'Apply to All'; return;
+  }
+
+  try {
+    const wEnc = encodeURIComponent(w);
+    // Update master
+    const r1 = await fetch(`${SUPABASE_URL}/rest/v1/retailer_master?wholesaler=eq.${wEnc}`, {
+      method:'PATCH', headers:{...H,'Prefer':'return=minimal'}, body:JSON.stringify(masterPay)
+    });
+    if (!r1.ok) { const e=await r1.json().catch(()=>{}); throw new Error(e?.message||`Master: HTTP ${r1.status}`); }
+
+    // Update retailer_forms for all matching wholesaler_firm entries
+    const formsPay = {};
+    if (district)   formsPay.district    = district;
+    if (state)      formsPay.state       = state;
+    // Note: w_mobile and conference live in retailer_master, not retailer_forms
+    if (Object.keys(formsPay).length) {
+      const r2 = await fetch(`${SUPABASE_URL}/rest/v1/retailer_forms?wholesaler_firm=eq.${wEnc}`, {
+        method:'PATCH', headers:{...H,'Prefer':'return=minimal'}, body:JSON.stringify(formsPay)
+      });
+      if (!r2.ok) { const e=await r2.json().catch(()=>{}); throw new Error(e?.message||`Forms: HTTP ${r2.status}`); }
+    }
+
+    // Update local masterData
+    masterData.forEach(m => { if ((m.wholesaler||'').toUpperCase()===w.toUpperCase()) Object.assign(m, masterPay); });
+    // Update local formsData
+    formsData.forEach(f => {
+      if ((f.wholesaler_firm||'').toUpperCase()===w.toUpperCase()) {
+        if (district) f.district = district;
+        if (state)    f.state    = state;
+      }
+    });
+
+    buildMerged(); updateStats(); renderTable();
+    closeBulkModal();
+    showToast(`Updated ${mergedData.filter(d=>(d.wholesaler||'').toUpperCase()===w.toUpperCase()).length} retailers under ${w}!`);
+  } catch(e) {
+    errEl.textContent = 'Update failed: ' + e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.innerHTML = 'Apply to All';
+  }
+}
+
+// ── Confirm modal ──────────────────────────────────────────────────────────
+function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+document.getElementById('modalOverlay').addEventListener('click', e => { if(e.target===document.getElementById('modalOverlay')) closeModal(); });
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = (type==='success'?'✔ ':'✖ ') + msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
