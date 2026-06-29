@@ -290,7 +290,7 @@ async function runBirthdayAnniversaryCron() {
   console.log(`[CRON] Running birthday/anniversary check for ${todayDM}`);
 
   try {
-    // Fetch all retailers with birthday or anniversary
+    // Fetch from retailer_master
     let rows = [], from = 0;
     while (true) {
       const r = await fetch(
@@ -302,6 +302,23 @@ async function runBirthdayAnniversaryCron() {
       if (b.length < 1000) break;
       from += 1000;
     }
+
+    // Also fetch from retailer_forms (has date_of_birth and anniversary)
+    let formRows = [], from2 = 0;
+    while (true) {
+      const r = await fetch(
+        `${SB_URL_SGS}/rest/v1/retailer_forms?select=firm_name,mobile,date_of_birth,anniversary&limit=1000&offset=${from2}`,
+        { headers: { ...SB_HDR, Range: `${from2}-${from2+999}`, 'Range-Unit': 'items', Prefer: 'count=none' } }
+      );
+      const b = await r.json();
+      formRows = formRows.concat(b);
+      if (b.length < 1000) break;
+      from2 += 1000;
+    }
+    // Normalize form rows to same format
+    formRows.forEach(f => {
+      rows.push({ retailer: f.firm_name, mobile: f.mobile, birthday: f.date_of_birth, anniversary: f.anniversary });
+    });
 
     let birthdayCount = 0, anniversaryCount = 0;
 
@@ -341,34 +358,29 @@ async function runBirthdayAnniversaryCron() {
 }
 
 function extractDayMonth(dateStr) {
-  // Handle formats: DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, MM/DD/YYYY
-  dateStr = dateStr.trim();
+  if (!dateStr) return null;
+  dateStr = dateStr.toString().trim();
   let day, month;
-  if (dateStr.includes('/')) {
-    const parts = dateStr.split('/');
-    if (parts[0].length === 4) {
-      // YYYY/MM/DD
-      month = parts[1]; day = parts[2];
-    } else if (parseInt(parts[0]) > 12) {
-      // DD/MM/YYYY
-      day = parts[0]; month = parts[1];
-    } else {
-      // Could be MM/DD/YYYY or DD/MM/YYYY — assume DD/MM for Indian format
-      day = parts[0]; month = parts[1];
-    }
-  } else if (dateStr.includes('-')) {
-    const parts = dateStr.split('-');
-    if (parts[0].length === 4) {
-      // YYYY-MM-DD
-      month = parts[1]; day = parts[2].substring(0, 2);
-    } else {
-      // DD-MM-YYYY
-      day = parts[0]; month = parts[1];
-    }
+
+  // Detect separator
+  const sep = dateStr.includes('.') ? '.' : dateStr.includes('/') ? '/' : dateStr.includes('-') ? '-' : null;
+  if (!sep) return null;
+
+  const parts = dateStr.split(sep);
+  if (parts.length < 3) return null;
+
+  if (parts[0].length === 4) {
+    // YYYY-MM-DD or YYYY.MM.DD
+    month = parts[1]; day = parts[2].substring(0, 2);
   } else {
-    return null;
+    // DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY (Indian format)
+    day = parts[0]; month = parts[1];
   }
-  return String(parseInt(day)).padStart(2, '0') + '/' + String(parseInt(month)).padStart(2, '0');
+
+  const d = parseInt(day);
+  const m = parseInt(month);
+  if (isNaN(d) || isNaN(m) || d < 1 || d > 31 || m < 1 || m > 12) return null;
+  return String(d).padStart(2, '0') + '/' + String(m).padStart(2, '0');
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -377,7 +389,7 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function scheduleCron() {
   const now      = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
   const target   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-  target.setHours(12, 0, 0, 0);
+  target.setHours(12, 30, 0, 0);
   // If 9 AM already passed today, schedule for tomorrow
   if (now >= target) target.setDate(target.getDate() + 1);
   const msUntil = target - now;
@@ -390,5 +402,12 @@ function scheduleCron() {
 }
 
 scheduleCron();
+
+
+// Manual trigger for birthday/anniversary cron (for testing)
+app.get('/run-cron', async (req, res) => {
+  res.json({ status: 'Cron triggered, check logs' });
+  await runBirthdayAnniversaryCron();
+});
 
 app.listen(process.env.PORT || 3000, () => console.log('SGS API running on port ' + (process.env.PORT || 3000)));
