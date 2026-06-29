@@ -328,7 +328,6 @@ async function runBirthdayAnniversaryCron() {
       if (row.birthday) {
         const bday = row.birthday.toString().trim();
         const bdayDM = extractDayMonth(bday);
-        console.log(`[DEBUG] ${row.retailer} birthday: "${bday}" → "${bdayDM}" vs "${todayDM}"`);
         if (bdayDM === todayDM) {
           const result = await sendTemplate(row.mobile, 'birthday');
           console.log(`[BIRTHDAY] ${row.retailer} (${row.mobile}): ${result.ok ? '✓' : '✗'}`);
