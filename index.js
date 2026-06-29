@@ -246,20 +246,19 @@ const SB_URL_SGS = 'https://oapgtrotlfgrjefanyss.supabase.co';
 const SB_KEY_SGS = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hcGd0cm90bGZncmplZmFueXNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMzk5NzIsImV4cCI6MjA5NjkxNTk3Mn0.thvxozgAtmhHjUGIufdqf1naYB8mOR-0sY09eGTyOTk';
 const SB_HDR     = { apikey: SB_KEY_SGS, Authorization: `Bearer ${SB_KEY_SGS}` };
 
-// Hardcoded media IDs for birthday/anniversary templates
-const TEMPLATE_MEDIA_IDS = {
-  'birthday':    '1751898939458509',
-  'anniversary': '2768993090137071'
+const TEMPLATE_IMAGE_LINKS = {
+  'birthday':    'https://ancbckzvoliipitfhnii.supabase.co/storage/v1/object/public/product-images/birthday.jpeg',
+  'anniversary': 'https://ancbckzvoliipitfhnii.supabase.co/storage/v1/object/public/product-images/wedding.jpeg'
 };
 
 async function sendTemplate(to, templateName) {
   const num = to.replace(/[^0-9]/g, '');
   const phone = num.length === 10 ? '91' + num : num;
 
-  const mediaId = TEMPLATE_MEDIA_IDS[templateName];
-  const components = mediaId ? [{
+  const imageLink = TEMPLATE_IMAGE_LINKS[templateName];
+  const components = imageLink ? [{
     type: 'header',
-    parameters: [{ type: 'image', image: { id: mediaId } }]
+    parameters: [{ type: 'image', image: { link: imageLink } }]
   }] : [];
 
   const tmpl = { name: templateName, language: { code: 'en' } };
@@ -327,9 +326,9 @@ async function runBirthdayAnniversaryCron() {
 
       // Check birthday
       if (row.birthday) {
-        // Parse birthday — could be DD/MM/YYYY or DD-MM-YYYY or YYYY-MM-DD
         const bday = row.birthday.toString().trim();
         const bdayDM = extractDayMonth(bday);
+        console.log(`[DEBUG] ${row.retailer} birthday: "${bday}" → "${bdayDM}" vs "${todayDM}"`);
         if (bdayDM === todayDM) {
           const result = await sendTemplate(row.mobile, 'birthday');
           console.log(`[BIRTHDAY] ${row.retailer} (${row.mobile}): ${result.ok ? '✓' : '✗'}`);
@@ -389,7 +388,7 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function scheduleCron() {
   const now      = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
   const target   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-  target.setHours(12, 30, 0, 0);
+  target.setHours(12, 45, 0, 0);
   // If 9 AM already passed today, schedule for tomorrow
   if (now >= target) target.setDate(target.getDate() + 1);
   const msUntil = target - now;
