@@ -4,7 +4,66 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SGS Admin – Submissions</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+// ── Today's Birthdays & Anniversaries ─────────────────────────────────────────
+function showTodayCelebrations() {
+  const now   = new Date();
+  const day   = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const todayDM = day + '/' + month;
+
+  function extractDayMonth(dateStr) {
+    if (!dateStr) return null;
+    dateStr = dateStr.toString().trim();
+    const sep = dateStr.includes('.') ? '.' : dateStr.includes('/') ? '/' : dateStr.includes('-') ? '-' : null;
+    if (!sep) return null;
+    const parts = dateStr.split(sep);
+    if (parts.length < 2) return null;
+    let d, m;
+    if (parts[0].length === 4) { m = parts[1]; d = parts[2]?.substring(0, 2); }
+    else { d = parts[0]; m = parts[1]; }
+    const di = parseInt(d), mi = parseInt(m);
+    if (isNaN(di) || isNaN(mi)) return null;
+    return String(di).padStart(2, '0') + '/' + String(mi).padStart(2, '0');
+  }
+
+  const birthdays    = mergedData.filter(r => extractDayMonth(r.birthday)    === todayDM && r.mobile);
+  const anniversaries = mergedData.filter(r => extractDayMonth(r.anniversary) === todayDM && r.mobile);
+
+  const el = document.getElementById('today-celebrations');
+  if (!birthdays.length && !anniversaries.length) { el.style.display = 'none'; return; }
+
+  el.style.display = 'flex';
+  let html = '';
+
+  if (birthdays.length) {
+    html += `<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:14px 18px;flex:1;min-width:280px">
+      <div style="font-size:13px;font-weight:700;color:#92400E;margin-bottom:10px">🎂 Today's Birthdays (${birthdays.length})</div>
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto">
+        ${birthdays.map(r => `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #FEF3C7">
+          <span style="font-weight:500">${r.retailer}</span>
+          <span style="font-family:monospace;color:#92400E">${r.mobile}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  if (anniversaries.length) {
+    html += `<div style="background:#FDF2F8;border:1px solid #F9A8D4;border-radius:10px;padding:14px 18px;flex:1;min-width:280px">
+      <div style="font-size:13px;font-weight:700;color:#9D174D;margin-bottom:10px">💍 Today's Anniversaries (${anniversaries.length})</div>
+      <div style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto">
+        ${anniversaries.map(r => `<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #FCE7F3">
+          <span style="font-weight:500">${r.retailer}</span>
+          <span style="font-family:monospace;color:#9D174D">${r.mobile}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -490,7 +549,8 @@ async function loadAll() {
       fetchAll('retailer_master', 'wholesaler.asc,retailer.asc'),
       fetchAll('retailer_forms',  'created_at.desc')
     ]);
-    buildMerged(); updateStats();
+    buildMerged();
+  showTodayCelebrations(); updateStats();
     // Mark default sort header
     document.querySelectorAll('#tableHeaders th[onclick]').forEach(th => {
       if (th.getAttribute('onclick') === "sortBy('wholesaler')") th.classList.add('sort-asc');
