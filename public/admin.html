@@ -32,6 +32,7 @@ function showTodayCelebrations() {
   const anniversaries = mergedData.filter(r => extractDayMonth(r.anniversary) === todayDM && r.mobile);
 
   const el = document.getElementById('today-celebrations');
+  if (!el) return;
   if (!birthdays.length && !anniversaries.length) { el.style.display = 'none'; return; }
 
   el.style.display = 'flex';
@@ -266,6 +267,7 @@ function showTodayCelebrations() {
       <div class="stat-card gold"><div class="stat-num" id="statBirth">—</div><div class="stat-label">Have Birthday</div></div>
       <div class="stat-card"><div class="stat-num" id="statAnniv">—</div><div class="stat-label">Have Anniversary</div></div>
     </div>
+    <div id="today-celebrations" style="margin-bottom:20px;gap:16px;flex-wrap:wrap;display:none"></div>
     <div class="toolbar">
       <div class="search-box">
         <span class="search-icon">🔍</span>
